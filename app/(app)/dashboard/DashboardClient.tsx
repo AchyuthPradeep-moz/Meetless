@@ -1,0 +1,300 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
+import { RefreshCw, Users, Calendar, Clock, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
+import MeetingCard from '@/components/meetings/MeetingCard'
+import type { Meeting, Classification } from '@/types/meeting'
+
+interface OutcomeStats {
+  cancelled: number
+  async: number
+  happened: number
+  hours_saved: number
+}
+
+type Filter = Classification | 'all'
+
+function getWeekBounds(offset: number): { start: Date; end: Date; label: string } {
+  const now = new Date()
+  const mon = new Date(now)
+  mon.setDate(now.getDate() - ((now.getDay() + 6) % 7) + offset * 7)
+  mon.setHours(0, 0, 0, 0)
+  const sun = new Date(mon.getTime() + 7 * 24 * 60 * 60 * 1000)
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const year = offset !== 0 ? ` ${mon.getFullYear()}` : ''
+  return { start: mon, end: sun, label: `${fmt(mon)} – ${fmt(new Date(sun.getTime() - 1))}${year}` }
+}
+
+function groupByDay(meetings: Meeting[]) {
+  const groups: Record<string, Meeting[]> = {}
+  for (const m of meetings) {
+    const label = new Date(m.start_time).toLocaleDateString('en-IN', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'Asia/Kolkata',
+    })
+    if (!groups[label]) groups[label] = []
+    groups[label].push(m)
+  }
+  return groups
+}
+
+interface Props {
+  slackConnected: boolean
+}
+
+const filterConfig: { value: Filter; label: string; active: string }[] = [
+  { value: 'all', label: 'All meetings', active: 'bg-gray-900 text-white' },
+  { value: 'important', label: 'Important', active: 'bg-green-600 text-white' },
+  { value: 'async', label: 'Async candidate', active: 'bg-purple-600 text-white' },
+  { value: 'passive', label: 'Passive', active: 'bg-blue-600 text-white' },
+]
+
+export default function DashboardClient({ slackConnected }: Props) {
+  const [meetings, setMeetings] = useState<Meeting[]>([])
+  const [filter, setFilter] = useState<Filter>('all')
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null)
+  const [outcomes, setOutcomes] = useState<OutcomeStats | null>(null)
+
+  const fetchMeetings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/meetings')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data: Meeting[] = await res.json()
+      setMeetings(data)
+      setError(null)
+    } catch (err) {
+      console.error('Failed to load meetings:', err)
+      setError('Could not load meetings. Try re-syncing your calendar.')
+    }
+  }, [])
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const res = await fetch('/api/user/status')
+        const status = await res.json()
+        setGoogleConnected(status.googleConnected)
+        if (status.googleConnected) {
+          await fetchMeetings()
+        }
+        // Fetch outcome stats in parallel — non-blocking
+        fetch('/api/meetings/outcomes')
+          .then((r) => r.json())
+          .then((data) => { if (!data.error) setOutcomes(data) })
+          .catch(() => {})
+      } catch {
+        setGoogleConnected(false)
+      } finally {
+        setLoading(false)
+      }
+    }
+    init()
+  }, [fetchMeetings])
+
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      await fetchMeetings()
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const week = getWeekBounds(weekOffset)
+  const now = new Date()
+
+  // Safety net: filter out past meetings in case DB cleanup missed any
+  const weekMeetings = meetings.filter((m) => {
+    const t = new Date(m.start_time)
+    return t >= now && t >= week.start && t < week.end
+  })
+
+  const asyncCount = weekMeetings.filter((m) => m.classification === 'async').length
+  const passiveCount = weekMeetings.filter((m) => m.classification === 'passive').length
+  const totalCount = weekMeetings.length
+
+  const filtered =
+    filter === 'all' ? weekMeetings : weekMeetings.filter((m) => m.classification === filter)
+  const grouped = groupByDay(filtered)
+
+  return (
+    <div className="p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl text-gray-900 mb-1">Your meetings</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <button
+                onClick={() => setWeekOffset((o) => o - 1)}
+                className="p-1 rounded hover:bg-gray-100 transition-colors"
+                aria-label="Previous week"
+              >
+                <ChevronLeft className="w-4 h-4 text-gray-500" />
+              </button>
+              <span className="text-gray-600 text-sm">{week.label}</span>
+              <button
+                onClick={() => setWeekOffset((o) => o + 1)}
+                className="p-1 rounded hover:bg-gray-100 transition-colors"
+                aria-label="Next week"
+              >
+                <ChevronRight className="w-4 h-4 text-gray-500" />
+              </button>
+              {weekOffset !== 0 && (
+                <button
+                  onClick={() => setWeekOffset(0)}
+                  className="ml-1 text-xs text-blue-600 hover:underline"
+                >
+                  Today
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {slackConnected && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm border border-green-200">
+                <div className="w-2 h-2 bg-green-500 rounded-full" />
+                Slack connected
+              </div>
+            )}
+            <button
+              onClick={handleSync}
+              disabled={syncing || loading}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+              Re-sync calendar
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Calendar className="w-5 h-5 text-gray-600" />
+              <span className="text-gray-600">Total meetings</span>
+            </div>
+            <div className="text-3xl text-gray-900">{totalCount}</div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Clock className="w-5 h-5 text-purple-600" />
+              <span className="text-gray-600">Async candidates</span>
+            </div>
+            <div className="text-3xl text-gray-900">{asyncCount}</div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Users className="w-5 h-5 text-blue-600" />
+              <span className="text-gray-600">Passive attendance</span>
+            </div>
+            <div className="text-3xl text-gray-900">{passiveCount}</div>
+          </div>
+        </div>
+
+        {outcomes && (outcomes.cancelled > 0 || outcomes.async > 0 || outcomes.happened > 0) && (
+          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-600">Outcomes this month</span>
+            </div>
+            <div className="flex items-center gap-6">
+              {outcomes.cancelled > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-lg text-gray-900">{outcomes.cancelled}</span>
+                  <span className="text-sm text-gray-500">meeting{outcomes.cancelled === 1 ? '' : 's'} cancelled</span>
+                </div>
+              )}
+              {outcomes.async > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-lg text-gray-900">{outcomes.async}</span>
+                  <span className="text-sm text-gray-500">converted to async</span>
+                </div>
+              )}
+              {outcomes.hours_saved > 0 && (
+                <div className="flex items-center gap-2 ml-auto px-3 py-1 bg-green-50 border border-green-200 rounded-lg">
+                  <span className="text-sm font-medium text-green-700">{outcomes.hours_saved}h saved</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2 mb-6">
+          {filterConfig.map(({ value, label, active }) => (
+            <button
+              key={value}
+              onClick={() => setFilter(value)}
+              className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                filter === value
+                  ? active
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="flex items-center gap-3 text-gray-500">
+              <RefreshCw className="w-5 h-5 animate-spin" />
+              <span className="text-sm">Syncing your calendar…</span>
+            </div>
+          </div>
+        ) : googleConnected === false ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <p className="text-gray-600 mb-3">Connect your Google Calendar to get started</p>
+            <Link href="/settings" className="text-sm text-blue-600 hover:underline">
+              Go to Settings →
+            </Link>
+          </div>
+        ) : error ? (
+          <div className="py-10 text-center">
+            <p className="text-sm text-red-500 mb-3">{error}</p>
+            <button
+              onClick={handleSync}
+              className="text-sm text-gray-600 underline hover:text-gray-900"
+            >
+              Try again
+            </button>
+          </div>
+        ) : Object.keys(grouped).length === 0 ? (
+          <p className="text-sm text-gray-400 mt-4">No meetings this week.</p>
+        ) : (
+          <div className="space-y-8">
+            {Object.entries(grouped).map(([day, dayMeetings]) => (
+              <div key={day}>
+                <h3 className="text-sm text-gray-500 mb-3">{day}</h3>
+                <div className="space-y-3">
+                  {dayMeetings.map((meeting) => (
+                    <div key={meeting.id}>
+                      <Link href={`/meetings/${meeting.id}`}>
+                        <MeetingCard meeting={meeting} />
+                      </Link>
+                      {meeting.classification === 'async' && (
+                        <Link
+                          href={`/async/${meeting.id}`}
+                          className="mt-1.5 flex items-center gap-1.5 px-3 py-1.5 text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors w-fit"
+                        >
+                          View Status Board →
+                        </Link>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,24 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/digest",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/reminder",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/nudge",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/board-link",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/transcripts",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
