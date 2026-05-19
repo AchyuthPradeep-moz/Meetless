@@ -46,9 +46,10 @@ function endTime(iso: string, durationMins: number) {
 
 interface Props {
   meeting: Meeting
+  onOverride?: (meetingId: string, cls: Classification) => void
 }
 
-export default function MeetingCard({ meeting }: Props) {
+export default function MeetingCard({ meeting, onOverride }: Props) {
   const cls = meeting.classification
   if (!cls) return null
 
@@ -104,7 +105,7 @@ export default function MeetingCard({ meeting }: Props) {
                 </div>
               )}
             </div>
-            <OverrideButton meetingId={meeting.id} current={cls} />
+            <OverrideButton meetingId={meeting.id} current={cls} onOverride={onOverride ? (cls) => onOverride(meeting.id, cls) : undefined} />
           </div>
         </div>
       </div>

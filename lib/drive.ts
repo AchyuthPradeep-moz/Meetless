@@ -44,8 +44,10 @@ async function searchDrive(
 }
 
 // Fetches the transcript for a meeting from the organiser's Google Drive.
-// Tries four matching strategies in order: exact title, partial title (first 3 words),
-// same-day transcript files, and any file in Meet Recordings within 1h of meeting end.
+// Searches the entire Drive (no folder filter) so files saved to My Drive root are found.
+// Strategy 1: first 2 words of title + "Transcript" — whole drive, no time filter.
+// Strategy 2: Meet Recordings folder — ±3h window around meeting.
+// Strategy 3: any Transcript file created on the same calendar day.
 export async function fetchMeetingTranscript(
   user: User,
   meetingTitle: string,
@@ -57,50 +59,47 @@ export async function fetchMeetingTranscript(
 
   const meetingStart = new Date(meetingStartTime)
   const meetingEnd = new Date(meetingStart.getTime() + durationMins * 60 * 1000)
-  // Recordings take time to process — allow up to 1h after meeting end
-  const windowEnd = new Date(meetingEnd.getTime() + 60 * 60 * 1000)
-  // Search from 15 min before start (in case of clock drift)
-  const windowStart = new Date(meetingStart.getTime() - 15 * 60 * 1000)
+  const fields = 'files(id, name, mimeType, createdTime)'
 
-  const fields = 'files(id, name, mimeType)'
-
-  // Prefer transcript-labelled file within results; fall back to first result
-  function pickTranscript(files: DriveFile[]): DriveFile | null {
-    return files.find((f) => f.name?.toLowerCase().includes('transcript')) ?? files[0] ?? null
+  // Sanitise a string for use inside a Drive query string literal
+  function safe(s: string) {
+    return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
   }
 
   console.log('Searching Drive for transcript:', meetingTitle)
-  console.log('Search window:', windowStart.toISOString(), '→', windowEnd.toISOString())
 
-  // ── Strategy 1: exact title match ────────────────────────────────────────
+  // ── Strategy 1: entire Drive, first 2 words + "Transcript", no time filter ──
   {
-    const safeTitle = meetingTitle.slice(0, 60).replace(/'/g, "\\'")
-    const files = await searchDrive(drive, 'exact title', {
-      q: [
-        `name contains '${safeTitle}'`,
-        `createdTime > '${windowStart.toISOString()}'`,
-        `createdTime < '${windowEnd.toISOString()}'`,
-        `trashed = false`,
-      ].join(' and '),
+    const firstTwo = safe(meetingTitle.trim().split(/\s+/).slice(0, 2).join(' '))
+    const files = await searchDrive(drive, 'strategy-1 (name+Transcript, whole drive)', {
+      q: `name contains '${firstTwo}' and name contains 'Transcript' and trashed = false`,
       fields,
+      spaces: 'drive',
       orderBy: 'createdTime desc',
-      pageSize: 10,
+      pageSize: 5,
     })
-    const file = pickTranscript(files)
-    if (file?.id) {
-      console.log('Exact match found:', file.name)
-      return extractText(file, drive, auth)
+    if (files.length > 0) {
+      console.log('Strategy 1 match:', files[0].name)
+      return extractText(files[0], drive, auth)
     }
   }
 
-  // ── Strategy 2: partial match — first 3 words of title ───────────────────
+  // ── Strategy 2: Meet Recordings folder, ±3h window ───────────────────────
   {
-    const first3 = meetingTitle.trim().split(/\s+/).slice(0, 3).join(' ').replace(/'/g, "\\'")
-    const fullSafe = meetingTitle.slice(0, 60).replace(/'/g, "\\'")
-    if (first3 && first3 !== fullSafe) {
-      const files = await searchDrive(drive, 'partial title (3 words)', {
+    const windowStart = new Date(meetingStart.getTime() - 3 * 60 * 60 * 1000)
+    const windowEnd = new Date(meetingEnd.getTime() + 3 * 60 * 60 * 1000)
+
+    const folders = await searchDrive(drive, 'strategy-2 (Meet Recordings folder)', {
+      q: `name = 'Meet Recordings' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+      fields: 'files(id, name, mimeType)',
+      pageSize: 1,
+    })
+    const folderId = folders[0]?.id
+
+    if (folderId) {
+      const files = await searchDrive(drive, 'strategy-2 (folder contents)', {
         q: [
-          `name contains '${first3}'`,
+          `'${folderId}' in parents`,
           `createdTime > '${windowStart.toISOString()}'`,
           `createdTime < '${windowEnd.toISOString()}'`,
           `trashed = false`,
@@ -109,66 +108,39 @@ export async function fetchMeetingTranscript(
         orderBy: 'createdTime desc',
         pageSize: 10,
       })
-      const file = pickTranscript(files)
+      // Prefer a file with "transcript" in the name; otherwise take the most recent
+      const file = files.find((f) => f.name?.toLowerCase().includes('transcript')) ?? files[0] ?? null
       if (file?.id) {
-        console.log('Partial match found:', file.name)
+        console.log('Strategy 2 match:', file.name)
         return extractText(file, drive, auth)
       }
+    } else {
+      console.log('Meet Recordings folder not found')
     }
   }
 
-  // ── Strategy 3: any transcript file created on the same calendar day ─────
+  // ── Strategy 3: any Transcript file created anywhere on the same day ─────
   {
     const dayStart = new Date(meetingStart)
-    dayStart.setUTCHours(0, 0, 0, 0)
-    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000)
+    dayStart.setHours(0, 0, 0, 0)
+    const dayEnd = new Date(meetingStart)
+    dayEnd.setHours(23, 59, 59, 999)
 
-    const files = await searchDrive(drive, 'same-day transcript', {
+    const files = await searchDrive(drive, 'strategy-3 (same-day Transcript)', {
       q: [
-        `name contains 'transcript'`,
+        `name contains 'Transcript'`,
         `createdTime > '${dayStart.toISOString()}'`,
         `createdTime < '${dayEnd.toISOString()}'`,
         `trashed = false`,
       ].join(' and '),
       fields,
+      spaces: 'drive',
       orderBy: 'createdTime desc',
-      pageSize: 20,
+      pageSize: 10,
     })
-    const file = files[0] ?? null
-    if (file?.id) {
-      console.log('Date match found:', file.name)
-      return extractText(file, drive, auth)
-    }
-  }
-
-  // ── Strategy 4: any file in Meet Recordings folder within 1h of meeting end
-  {
-    const folders = await searchDrive(drive, 'Meet Recordings folder', {
-      q: `name = 'Meet Recordings' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
-      fields: 'files(id, name, mimeType)',
-      pageSize: 1,
-    })
-    const folderId = folders[0]?.id
-
-    if (folderId) {
-      const files = await searchDrive(drive, 'folder contents', {
-        q: [
-          `'${folderId}' in parents`,
-          `createdTime > '${meetingEnd.toISOString()}'`,
-          `createdTime < '${windowEnd.toISOString()}'`,
-          `trashed = false`,
-        ].join(' and '),
-        fields,
-        orderBy: 'createdTime asc',
-        pageSize: 10,
-      })
-      const file = pickTranscript(files)
-      if (file?.id) {
-        console.log('Meet Recordings folder match found:', file.name)
-        return extractText(file, drive, auth)
-      }
-    } else {
-      console.log('Meet Recordings folder not found in Drive')
+    if (files.length > 0) {
+      console.log('Strategy 3 match:', files[0].name)
+      return extractText(files[0], drive, auth)
     }
   }
 

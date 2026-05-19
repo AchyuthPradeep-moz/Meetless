@@ -45,6 +45,18 @@ interface Props {
   slackConnected: boolean
 }
 
+const confidenceMap: Record<Classification, number> = {
+  important: 90,
+  async: 25,
+  passive: 10,
+}
+
+const reasonMap: Record<Classification, string> = {
+  important: 'Manually marked as important by user',
+  async: 'Manually marked as async candidate by user',
+  passive: 'Manually marked as passive by user',
+}
+
 const filterConfig: { value: Filter; label: string; active: string }[] = [
   { value: 'all', label: 'All meetings', active: 'bg-gray-900 text-white' },
   { value: 'important', label: 'Important', active: 'bg-green-600 text-white' },
@@ -97,6 +109,16 @@ export default function DashboardClient({ slackConnected }: Props) {
     }
     init()
   }, [fetchMeetings])
+
+  const handleOverride = (meetingId: string, cls: Classification) => {
+    setMeetings((prev) =>
+      prev.map((m) =>
+        m.id === meetingId
+          ? { ...m, classification: cls, confidence: confidenceMap[cls], reason: reasonMap[cls] }
+          : m
+      )
+    )
+  }
 
   const handleSync = async () => {
     setSyncing(true)
@@ -277,7 +299,7 @@ export default function DashboardClient({ slackConnected }: Props) {
                   {dayMeetings.map((meeting) => (
                     <div key={meeting.id}>
                       <Link href={`/meetings/${meeting.id}`}>
-                        <MeetingCard meeting={meeting} />
+                        <MeetingCard meeting={meeting} onOverride={handleOverride} />
                       </Link>
                       {meeting.classification === 'async' && (
                         <Link

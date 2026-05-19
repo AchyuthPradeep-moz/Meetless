@@ -13,9 +13,10 @@ const options: { value: Classification; label: string }[] = [
 interface Props {
   meetingId: string
   current: Classification
+  onOverride?: (cls: Classification) => void
 }
 
-export default function OverrideButton({ meetingId, current }: Props) {
+export default function OverrideButton({ meetingId, current, onOverride }: Props) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -37,7 +38,12 @@ export default function OverrideButton({ meetingId, current }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ meeting_id: meetingId, new_classification: newClassification }),
     })
-    window.location.reload()
+    if (onOverride) {
+      onOverride(newClassification)
+    } else {
+      window.location.reload()
+    }
+    setLoading(false)
   }
 
   return (

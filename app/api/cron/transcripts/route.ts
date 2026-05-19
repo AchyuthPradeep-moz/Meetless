@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { fetchMeetingTranscript } from '@/lib/drive'
 import { generatePassiveSummary } from '@/lib/claude'
-import { deliverSummaryToPassiveAttendees } from '@/lib/summaries'
+import { deliverSummaryToAllAttendees } from '@/lib/summaries'
 import type { User } from '@/types/user'
 
 // Polls organiser Google Drive for transcripts of recently-ended passive meetings.
@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest) {
 
   const { data: meetings, error: meetingsErr } = await supabaseAdmin
     .from('meetings')
-    .select('id, google_event_id, title, start_time, end_time, duration, user_id')
+    .select('id, google_event_id, title, start_time, end_time, duration, user_id, organiser_email')
     .eq('is_organiser', true)
     .gte('start_time', extendedLookback.toISOString())
     .lt('start_time', now.toISOString())
@@ -155,20 +155,15 @@ export async function GET(_req: NextRequest) {
     }
     console.log(`  Summary saved to DB`)
 
-    const { data: hostUser } = await supabaseAdmin
-      .from('users')
-      .select('slack_user_id')
-      .eq('id', meeting.user_id)
-      .single()
-
-    const { delivered } = await deliverSummaryToPassiveAttendees(
+    const { delivered } = await deliverSummaryToAllAttendees(
       meeting.id,
+      meeting.user_id,
       meeting.google_event_id,
       meeting.title ?? 'Meeting',
       parsed.summary,
       parsed.decisions,
       parsed.actionItems,
-      hostUser?.slack_user_id ?? null
+      meeting.organiser_email ?? null
     )
 
     console.log(`  Delivered to ${delivered} passive attendees`)

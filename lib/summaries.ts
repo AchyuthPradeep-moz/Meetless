@@ -1,17 +1,19 @@
 import { supabaseAdmin } from './supabase'
-import { sendPassiveSummary, sendSummaryConfirmation } from './slack'
+import { sendMeetingSummary } from './slack'
 
-// Finds all attendees for a meeting and delivers the summary to any who have a Meetless
-// account with Slack connected. Does NOT require the attendee to have synced their calendar
-// or to have classified the meeting as passive — being in the attendee list is enough.
-export async function deliverSummaryToPassiveAttendees(
+// Delivers the meeting summary to ALL attendees (including the organiser) who have a
+// Meetless account with Slack connected, AND inserts a summaries row for each attendee
+// so the summary appears in their dashboard. Being in the attendee list is enough —
+// no classification check, no calendar sync required.
+export async function deliverSummaryToAllAttendees(
   hostMeetingId: string,
+  hostUserId: string,
   googleEventId: string,
   meetingTitle: string,
   summaryText: string,
   decisions: string[],
   actionItems: string[],
-  hostSlackId?: string | null
+  organiserEmail?: string | null
 ): Promise<{ delivered: number }> {
   const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
 
@@ -36,7 +38,6 @@ export async function deliverSummaryToPassiveAttendees(
     console.log(`Attendees from meeting_attendees (excl. declined): ${nonDeclined.length} of ${attendeeRows.length}`)
     attendeeEmails = nonDeclined.map((a) => a.email)
   } else {
-    // Fallback: attendee_emails column on the host's meetings row
     const { data: hostMeeting } = await supabaseAdmin
       .from('meetings')
       .select('attendee_emails')
@@ -47,7 +48,13 @@ export async function deliverSummaryToPassiveAttendees(
     attendeeEmails = hostMeeting?.attendee_emails ?? []
   }
 
-  console.log('Attendee emails from meeting:', attendeeEmails)
+  // Explicitly include the organiser — they may not be in their own attendee list
+  if (organiserEmail && !attendeeEmails.some((e) => e.toLowerCase() === organiserEmail.toLowerCase())) {
+    attendeeEmails = [...attendeeEmails, organiserEmail]
+    console.log('Organiser added to delivery list:', organiserEmail)
+  }
+
+  console.log('Final attendee list:', attendeeEmails)
 
   if (!attendeeEmails.length) {
     console.log('No attendee emails found — aborting delivery')
@@ -74,34 +81,60 @@ export async function deliverSummaryToPassiveAttendees(
     console.log('Checking attendee:', user.email, '| slack_user_id:', user.slack_user_id ?? 'none')
 
     if (!user.slack_user_id) {
-      console.log(`  SKIP ${user.email} — no Slack ID (summary visible on dashboard when they log in)`)
+      console.log(`  SKIP ${user.email} — no Slack connected`)
       continue
     }
 
-    // Determine the summary link: use their own meeting row if it exists,
-    // otherwise fall back to the host's meeting row so the link still works.
+    // Use their own meeting row for the summary link if they've synced;
+    // fall back to the host meeting row so the link still works.
     const { data: theirMeeting } = await supabaseAdmin
       .from('meetings')
-      .select('id, classification')
+      .select('id')
       .eq('user_id', user.id)
       .eq('google_event_id', googleEventId)
       .maybeSingle()
 
-    console.log(
-      `  Their meeting row:`,
-      theirMeeting
-        ? `id=${theirMeeting.id} classification=${theirMeeting.classification}`
-        : 'NOT FOUND (they haven\'t synced their calendar)'
-    )
-
-    // Use their meeting ID for the summary link if available, host meeting as fallback
     const summaryMeetingId = theirMeeting?.id ?? hostMeetingId
     const summaryUrl = `${baseUrl}/summaries/${summaryMeetingId}`
 
-    console.log('Sending Slack notification to:', user.slack_user_id, '| URL:', summaryUrl)
+    console.log(`  Sending to ${user.email} | URL: ${summaryUrl}`)
+
+    // Insert a summaries row for this attendee so it appears in their dashboard.
+    // Skip if they're the host (already has a row) or if a row already exists.
+    if (user.id !== hostUserId) {
+      const { data: existing } = await supabaseAdmin
+        .from('summaries')
+        .select('id')
+        .eq('meeting_id', summaryMeetingId)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!existing) {
+        const summaryJson = JSON.stringify({
+          summary: summaryText,
+          decisions,
+          keyPoints: [],
+          actionItems,
+        })
+        const { error: insertErr } = await supabaseAdmin.from('summaries').insert({
+          meeting_id: summaryMeetingId,
+          user_id: user.id,
+          summary: summaryJson,
+          transcript_text: null,
+          action_items: null,
+        })
+        if (insertErr) {
+          console.error(`  Failed to insert summary row for ${user.email}:`, insertErr)
+        } else {
+          console.log(`  Summary row inserted for ${user.email}`)
+        }
+      } else {
+        console.log(`  Summary row already exists for ${user.email} — skipping insert`)
+      }
+    }
 
     try {
-      await sendPassiveSummary(
+      await sendMeetingSummary(
         user.slack_user_id,
         meetingTitle,
         summaryText,
@@ -109,22 +142,13 @@ export async function deliverSummaryToPassiveAttendees(
         actionItems,
         summaryUrl
       )
-      console.log('Slack send result: OK for', user.email)
+      console.log(`  Slack DM OK`)
       delivered++
     } catch (err) {
-      console.error('Slack send result: FAILED for', user.email, err)
+      console.error(`  Slack DM FAILED for ${user.email}:`, err)
     }
   }
 
-  // ── Step 3: confirm to host ───────────────────────────────────────────────
-
-  if (hostSlackId && delivered > 0) {
-    await sendSummaryConfirmation(hostSlackId, meetingTitle, delivered)
-    console.log('Host confirmation sent to:', hostSlackId)
-  } else if (hostSlackId && delivered === 0) {
-    console.log('Host confirmation skipped — 0 delivered')
-  }
-
-  console.log(`deliverSummaryToPassiveAttendees done: delivered=${delivered} for "${meetingTitle}"`)
+  console.log(`deliverSummaryToAllAttendees done: delivered=${delivered} for "${meetingTitle}"`)
   return { delivered }
 }

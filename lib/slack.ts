@@ -331,7 +331,7 @@ export async function sendBoardToChannel(
 }
 
 // Sends a passive meeting summary DM to an attendee who didn't need to be present.
-export async function sendPassiveSummary(
+export async function sendMeetingSummary(
   slackUserId: string,
   meetingTitle: string,
   summaryText: string,
@@ -342,16 +342,13 @@ export async function sendPassiveSummary(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const blocks: any[] = [
     {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: `📋 Summary ready for *${meetingTitle}*\nHere's what you missed:`,
-      },
+      type: 'header',
+      text: { type: 'plain_text', text: `📋 ${meetingTitle} — Summary`, emoji: true },
     },
     { type: 'divider' },
     {
       type: 'section',
-      text: { type: 'mrkdwn', text: `*Summary:*\n${summaryText}` },
+      text: { type: 'mrkdwn', text: summaryText },
     },
   ]
 
@@ -382,7 +379,7 @@ export async function sendPassiveSummary(
         type: 'button',
         text: { type: 'plain_text', text: 'View full summary →' },
         url: summaryUrl,
-        action_id: 'view_passive_summary',
+        action_id: 'view_meeting_summary',
         style: 'primary',
       },
     ],
@@ -395,7 +392,7 @@ export async function sendPassiveSummary(
       blocks,
     })
   } catch (err) {
-    console.error(`Failed to send passive summary to ${slackUserId}:`, err)
+    console.error(`Failed to send meeting summary to ${slackUserId}:`, err)
   }
 }
 

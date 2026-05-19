@@ -4,6 +4,18 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { supabaseAdmin } from '@/lib/supabase'
 import type { Classification } from '@/types/meeting'
 
+const confidenceMap: Record<Classification, number> = {
+  important: 90,
+  async: 25,
+  passive: 10,
+}
+
+const reasonMap: Record<Classification, string> = {
+  important: 'Manually marked as important by user',
+  async: 'Manually marked as async candidate by user',
+  passive: 'Manually marked as passive by user',
+}
+
 // POST — records a user's manual override of a meeting classification
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -37,8 +49,17 @@ export async function POST(req: NextRequest) {
 
   await supabaseAdmin
     .from('meetings')
-    .update({ classification: new_classification })
+    .update({
+      classification: new_classification,
+      confidence: confidenceMap[new_classification],
+      reason: reasonMap[new_classification],
+    })
     .eq('id', meeting_id)
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    classification: new_classification,
+    confidence: confidenceMap[new_classification],
+    reason: reasonMap[new_classification],
+  })
 }

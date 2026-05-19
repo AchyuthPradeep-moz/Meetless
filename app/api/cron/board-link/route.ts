@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   // which causes Supabase to throw an ambiguous relationship error. Fetch owner separately.
   let query = supabaseAdmin
     .from('meetings')
-    .select('id, title, start_time, board_link_sent, user_id, attendee_count, async_summary')
+    .select('id, google_event_id, title, start_time, board_link_sent, user_id, attendee_count, async_summary')
     .eq('classification', 'async')
 
   if (!testMode) {
@@ -53,30 +53,50 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  // Deduplicate by google_event_id — each calendar event has one row per user.
+  // Without this, a 3-person meeting fires sendBoardToChannel 3 times.
+  const seen = new Set<string>()
+  const uniqueMeetings: typeof meetings = []
+  for (const m of meetings as any[]) {
+    const key = m.google_event_id ?? m.id
+    if (seen.has(key)) continue
+    seen.add(key)
+    uniqueMeetings.push(m)
+  }
+
+  console.log(`Unique events after dedup: ${uniqueMeetings.length}`)
+
   let sent = 0
   const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
 
-  for (const m of meetings as any[]) {
+  for (const m of uniqueMeetings as any[]) {
     console.log(`\nProcessing meeting: "${m.title}"`)
-    console.log(`  id: ${m.id}`)
+    console.log(`  google_event_id: ${m.google_event_id}`)
+    console.log(`  representative id: ${m.id}`)
     console.log(`  start_time: ${m.start_time}`)
-    console.log(`  board_link_sent: ${m.board_link_sent}`)
 
-    // Count submissions for this meeting
+    // Find ALL sibling meeting rows for this event so we can count submissions correctly
+    const { data: siblingRows } = await supabaseAdmin
+      .from('meetings')
+      .select('id')
+      .eq('google_event_id', m.google_event_id)
+
+    const allMeetingIds = (siblingRows ?? []).map((r: any) => r.id)
+
+    // Count submissions across ALL sibling rows — each attendee may have submitted
+    // against their own meeting row (the one in the URL they opened)
     const { count, error: countError } = await supabaseAdmin
       .from('status_updates')
       .select('id', { count: 'exact', head: true })
-      .eq('meeting_id', m.id)
+      .in('meeting_id', allMeetingIds)
 
-    if (countError) {
-      console.error(`  Failed to count submissions:`, countError.message)
-    }
+    if (countError) console.error(`  Failed to count submissions:`, countError.message)
 
     const submittedCount = count ?? 0
     const totalCount = m.attendee_count ?? 0
-    console.log(`  Submissions: ${submittedCount}/${totalCount}`)
+    console.log(`  Submissions: ${submittedCount}/${totalCount} (across ${allMeetingIds.length} meeting rows)`)
 
-    // Post to channel
+    // Post to channel once for the event
     console.log(`  Posting to channel ${channelId || 'MISSING'}…`)
     try {
       await sendBoardToChannel(m.id, m.title, submittedCount, totalCount, m.async_summary ?? null)
@@ -109,17 +129,17 @@ export async function GET(req: NextRequest) {
       console.log(`  Owner has no Slack connected — skipping DM`)
     }
 
-    // Mark as sent (skipped in test mode so repeated test runs still fire)
+    // Mark ALL sibling rows as sent — prevents any other row from triggering a re-send
     if (!testMode) {
       const { error: updateError } = await supabaseAdmin
         .from('meetings')
         .update({ board_link_sent: true })
-        .eq('id', m.id)
+        .eq('google_event_id', m.google_event_id)
 
       if (updateError) {
         console.error(`  Failed to mark board_link_sent:`, updateError.message)
       } else {
-        console.log(`  Marked board_link_sent = true`)
+        console.log(`  Marked board_link_sent = true on ${allMeetingIds.length} rows`)
       }
     } else {
       console.log(`  Test mode — skipping board_link_sent update`)
