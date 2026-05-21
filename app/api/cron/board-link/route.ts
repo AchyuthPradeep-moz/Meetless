@@ -9,6 +9,11 @@ import { sendDM, sendBoardToChannel } from '@/lib/slack'
 // ?test=true — bypasses time window and board_link_sent guard,
 //              sends for ALL async meetings immediately
 export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get('authorization')
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const testMode = req.nextUrl.searchParams.get('test') === 'true'
   const channelId = process.env.SLACK_MEETING_CHANNEL_ID ?? ''
 

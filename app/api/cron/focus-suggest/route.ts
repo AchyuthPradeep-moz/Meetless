@@ -13,6 +13,11 @@ const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
 // ?test=true — lowers thresholds (1 meeting, 15 min gap, looks 14 days ahead)
 //              so you can test without needing a packed calendar
 export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get('authorization')
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const testMode = req.nextUrl.searchParams.get('test') === 'true'
   console.log('\n=== /api/cron/focus-suggest | ', new Date().toISOString(), '| testMode:', testMode, '===')
 

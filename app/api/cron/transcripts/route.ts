@@ -8,7 +8,12 @@ import type { User } from '@/types/user'
 // Polls organiser Google Drive for transcripts of recently-ended passive meetings.
 // Looks back 3 hours by end_time. Falls back to computing end_time from start_time + duration
 // if the end_time column is not yet populated.
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get('authorization')
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const now = new Date()
   const lookback = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
