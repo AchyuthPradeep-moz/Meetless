@@ -31,12 +31,15 @@ async function extractText(
 }
 
 // Runs a Drive files.list query and returns matching files.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function searchDrive(
   drive: ReturnType<typeof google.drive>,
-  params: Parameters<ReturnType<typeof google.drive>['files']['list']>[0]
+  params: Record<string, unknown>
 ): Promise<DriveFile[]> {
-  const { data } = await drive.files.list(params)
-  return (data.files ?? []) as DriveFile[]
+  // Cast needed: drive.files.list has callback overloads that confuse TS into inferring void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const response = await (drive.files.list as any)(params)
+  return (response.data?.files ?? []) as DriveFile[]
 }
 
 // Fetches the transcript for a meeting from the organiser's Google Drive.
