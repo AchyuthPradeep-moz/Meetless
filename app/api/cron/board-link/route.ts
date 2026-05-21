@@ -12,25 +12,28 @@ export async function GET(req: NextRequest) {
   const testMode = req.nextUrl.searchParams.get('test') === 'true'
   const channelId = process.env.SLACK_MEETING_CHANNEL_ID ?? ''
 
-  console.log('board-link cron fired | testMode:', testMode)
+  console.log('board-link cron fired | testMode:', testMode, '| now:', new Date().toISOString())
   console.log('Channel ID:', channelId || 'MISSING')
 
   const now = new Date()
-  const oneMinAgo = new Date(now.getTime() - 60 * 1000)
+  // Send only AFTER start_time so all pre-meeting submissions are already in DB.
+  // 10-minute backward window catches missed/delayed cron ticks.
+  // board_link_sent = false prevents double-sends across the full window.
+  const windowStart = new Date(now.getTime() - 10 * 60 * 1000)
+  const windowEnd = now
 
   // Select without join — meetings has two FK to users (user_id + draft_sent_by_user_id)
   // which causes Supabase to throw an ambiguous relationship error. Fetch owner separately.
   let query = supabaseAdmin
     .from('meetings')
-    .select('id, google_event_id, title, start_time, board_link_sent, user_id, attendee_count, async_summary')
+    .select('id, google_event_id, title, start_time, board_link_sent, user_id, attendee_emails, organiser_email, async_summary')
     .eq('classification', 'async')
 
   if (!testMode) {
-    // Normal mode: only meetings that just started and haven't been sent yet
     query = query
       .eq('board_link_sent', false)
-      .gte('start_time', oneMinAgo.toISOString())
-      .lte('start_time', now.toISOString())
+      .gte('start_time', windowStart.toISOString())
+      .lte('start_time', windowEnd.toISOString())
   }
 
   const { data: meetings, error: meetingsError } = await query
@@ -93,7 +96,12 @@ export async function GET(req: NextRequest) {
     if (countError) console.error(`  Failed to count submissions:`, countError.message)
 
     const submittedCount = count ?? 0
-    const totalCount = m.attendee_count ?? 0
+    // Exclude organiser from total — they don't submit status updates (same logic as GET handler)
+    const attendeeEmails: string[] = m.attendee_emails ?? []
+    const organiserEmail: string | null = m.organiser_email ?? null
+    const totalCount = attendeeEmails.filter(
+      (e: string) => e.toLowerCase() !== organiserEmail?.toLowerCase()
+    ).length || attendeeEmails.length
     console.log(`  Submissions: ${submittedCount}/${totalCount} (across ${allMeetingIds.length} meeting rows)`)
 
     // Post to channel once for the event

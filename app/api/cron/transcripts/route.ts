@@ -10,27 +10,27 @@ import type { User } from '@/types/user'
 // if the end_time column is not yet populated.
 export async function GET(_req: NextRequest) {
   const now = new Date()
-  const lookback = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+  const lookback = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
   console.log(`\n=== /api/cron/transcripts | ${now.toISOString()} ===`)
   console.log('Looking for meetings ended after:', lookback.toISOString())
 
-  // Extend start_time lookback by 8h to catch long meetings that started before the 24h window
+  // Extend start_time lookback by 8h to catch long meetings that started before the 7-day window
   // but ended within it. Real end-time filtering happens in-memory below.
   const extendedLookback = new Date(lookback.getTime() - 8 * 60 * 60 * 1000)
 
   const { data: meetings, error: meetingsErr } = await supabaseAdmin
     .from('meetings')
     .select('id, google_event_id, title, start_time, end_time, duration, user_id, organiser_email')
-    .eq('is_organiser', true)
+    .eq('classification', 'passive')
     .gte('start_time', extendedLookback.toISOString())
     .lt('start_time', now.toISOString())
 
   if (meetingsErr) console.error('Meetings query error:', meetingsErr)
-  console.log('Organiser meetings found in DB (broad window):', meetings?.length ?? 0)
+  console.log('Passive meetings found in DB (broad window):', meetings?.length ?? 0)
 
   if (!meetings?.length) {
-    console.log('No organiser meetings found — exiting')
+    console.log('No passive meetings found — exiting')
     return NextResponse.json({ processed: 0 })
   }
 
@@ -67,7 +67,7 @@ export async function GET(_req: NextRequest) {
     }
 
     if (endTime < lookback) {
-      console.log(`  SKIP "${m.title}" — ended ${endTime.toISOString()}, which is outside the 3h window`)
+      console.log(`  SKIP "${m.title}" — ended ${endTime.toISOString()}, which is outside the 7-day window`)
       return false
     }
 

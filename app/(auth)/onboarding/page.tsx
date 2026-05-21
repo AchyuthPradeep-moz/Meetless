@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle } from 'lucide-react'
 
@@ -8,6 +8,24 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(2)
   const [slackConnected, setSlackConnected] = useState(false)
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    // Mark this browser as a returning user so future logins skip consent
+    localStorage.setItem('meetless_returning_user', '1')
+
+    // If Slack is already connected, skip onboarding entirely
+    fetch('/api/user/status')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.slackConnected) {
+          router.replace('/dashboard')
+        } else {
+          setChecking(false)
+        }
+      })
+      .catch(() => setChecking(false))
+  }, [router])
 
   const connectSlack = () => {
     window.location.href = '/api/slack/oauth?state=onboarding'
@@ -17,6 +35,8 @@ export default function OnboardingPage() {
     setSlackConnected(false)
     setStep(3)
   }
+
+  if (checking) return null
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">

@@ -136,7 +136,7 @@ export default function SettingsClient({
 
         <div className="space-y-8">
           <div>
-            <label className="block text-gray-900 mb-3">Morning digest time</label>
+            <label className="block text-gray-900 mb-3">Meeting Digest time</label>
             <input
               type="time"
               value={digestTime}

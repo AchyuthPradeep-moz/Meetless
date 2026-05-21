@@ -87,7 +87,7 @@ export async function sendMorningDigest(
       const time = new Date(m.start_time).toLocaleTimeString('en-GB', {
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'UTC',
+        timeZone: 'Asia/Kolkata',
       })
       const emoji = CLASS_EMOJI[m.classification ?? ''] ?? '⚪'
       const label = CLASS_LABEL[m.classification ?? ''] ?? 'Unclassified'
@@ -396,6 +396,105 @@ export async function sendMeetingSummary(
   }
 }
 
+// Sent to the organiser when ALL attendees have submitted with zero blockers.
+// The organiser picks one of two buttons; handled in /api/slack/actions.
+export async function sendCancellationSuggestion(
+  slackUserId: string,
+  meetingTitle: string,
+  meetingId: string,
+  count: number
+): Promise<void> {
+  try {
+    await slackClient.chat.postMessage({
+      channel: slackUserId,
+      text: `✅ All ${count} members submitted. No blockers. This meeting may not be needed.`,
+      blocks: [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `✅ *All ${count} ${count === 1 ? 'member' : 'members'} submitted. No blockers flagged.*\n*${meetingTitle}* — this meeting may not be needed.`,
+          },
+        },
+        {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'Suggest Cancelling', emoji: true },
+              style: 'primary',
+              action_id: 'cancel_suggest',
+              value: `cancel_suggest_${meetingId}`,
+            },
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'Keep as is', emoji: true },
+              action_id: 'keep_meeting',
+              value: `keep_meeting_${meetingId}`,
+            },
+          ],
+        },
+      ],
+    })
+  } catch (err) {
+    console.error(`Failed to send cancellation suggestion to ${slackUserId}:`, err)
+  }
+}
+
+// Suggests blocking a free gap as focus time. User picks Block it or Not now.
+// value encodes: block_focus_<userId>_<isoStart>_<durationMins>
+export async function sendFocusSuggestion(
+  slackUserId: string,
+  userId: string,
+  date: string,         // e.g. "Wednesday, May 21"
+  startLabel: string,   // e.g. "10:00am"
+  durationMins: number,
+  meetingCount: number,
+  isoStart: string,     // ISO string of start time, used in action value
+): Promise<void> {
+  const durationLabel = durationMins >= 60
+    ? `${durationMins / 60}-hour`
+    : `${durationMins}-minute`
+
+  const value = `${userId}__${isoStart}__${durationMins}`
+
+  try {
+    await slackClient.chat.postMessage({
+      channel: slackUserId,
+      text: `🎯 You have ${meetingCount} meetings on ${date}. Meetless found a ${durationLabel} gap at ${startLabel}.`,
+      blocks: [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `🎯 You have *${meetingCount} meetings* on ${date}.\nMeetless found a *${durationLabel} gap* at *${startLabel}*.\nBlock it as focus time?`,
+          },
+        },
+        {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: '🔕 Block it', emoji: true },
+              style: 'primary',
+              action_id: 'block_focus',
+              value: `block_focus__${value}`,
+            },
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'Not now', emoji: false },
+              action_id: 'dismiss_focus',
+              value: `dismiss_focus__${value}`,
+            },
+          ],
+        },
+      ],
+    })
+  } catch (err) {
+    console.error(`Failed to send focus suggestion to ${slackUserId}:`, err)
+  }
+}
+
 // Confirms to the meeting host that summaries have been dispatched.
 export async function sendSummaryConfirmation(
   slackUserId: string,
@@ -412,64 +511,3 @@ export async function sendSummaryConfirmation(
   }
 }
 
-// Sends a draft organiser message to the user for approval via Slack interactive buttons.
-// NEVER sends the message automatically — user must click "Send to organiser".
-export async function sendDraftMessageForApproval(
-  slackUserId: string,
-  meetingId: string,
-  meetingTitle: string,
-  draftMessage: string,
-  classification: string
-): Promise<void> {
-  const label = classification === 'async' ? 'async candidate' : 'passive attendance'
-
-  await slackClient.chat.postMessage({
-    channel: slackUserId,
-    text: `Draft message ready for "${meetingTitle}"`,
-    blocks: [
-      {
-        type: 'header',
-        text: {
-          type: 'plain_text',
-          text: `✉️ Draft message ready for ${meetingTitle}`,
-          emoji: true,
-        },
-      },
-      {
-        type: 'context',
-        elements: [
-          {
-            type: 'mrkdwn',
-            text: `This meeting was classified as *${label}*. Review the draft before sending.`,
-          },
-        ],
-      },
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `> ${draftMessage.replace(/\n/g, '\n> ')}`,
-        },
-      },
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: 'Send to organiser' },
-            style: 'primary',
-            action_id: 'approve_draft',
-            value: `approve_${meetingId}`,
-          },
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: 'Discard' },
-            style: 'danger',
-            action_id: 'discard_draft',
-            value: `discard_${meetingId}`,
-          },
-        ],
-      },
-    ],
-  })
-}

@@ -105,7 +105,7 @@ export default function MeetingCard({ meeting, onOverride }: Props) {
                 </div>
               )}
             </div>
-            <OverrideButton meetingId={meeting.id} current={cls} onOverride={onOverride ? (cls) => onOverride(meeting.id, cls) : undefined} />
+            <OverrideButton meetingId={meeting.id} current={cls} onOverride={onOverride ? (c) => onOverride(meeting.id, c) : undefined} />
           </div>
         </div>
       </div>

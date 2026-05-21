@@ -2,6 +2,19 @@
 
 import { signIn } from 'next-auth/react'
 
+function handleSignIn() {
+  // Check if this browser has successfully signed in before.
+  // Returning users get the account-picker only (no permission screen).
+  // New users go through the full consent screen to obtain a refresh token.
+  const isReturning = typeof window !== 'undefined' &&
+    !!localStorage.getItem('meetless_returning_user')
+
+  signIn('google', { callbackUrl: '/' }, {
+    access_type: 'offline',
+    prompt: isReturning ? 'select_account' : 'consent',
+  })
+}
+
 export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
@@ -15,7 +28,7 @@ export default function LoginPage() {
             <p className="text-gray-600 mb-8">Spend less time in meetings, more time doing</p>
 
             <button
-              onClick={() => signIn('google', { callbackUrl: '/onboarding' })}
+              onClick={handleSignIn}
               className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors mb-4"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sendCancellationSuggestion } from '@/lib/slack'
 
 // POST — saves a status update for the logged-in user
 export async function POST(req: NextRequest) {
@@ -43,6 +44,61 @@ export async function POST(req: NextRequest) {
   console.log('Insert result — data:', saved, '| error:', error)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Check if this submission completes all attendees with no blockers → suggest cancellation
+  try {
+    const { data: meeting } = await supabaseAdmin
+      .from('meetings')
+      .select('google_event_id, title, organiser_email, attendee_emails')
+      .eq('id', meeting_id)
+      .single()
+
+    if (meeting?.organiser_email && meeting?.attendee_emails?.length) {
+      // Resolve all sibling meeting rows for this calendar event
+      const { data: siblingRows } = await supabaseAdmin
+        .from('meetings')
+        .select('id')
+        .eq('google_event_id', meeting.google_event_id)
+
+      const allMeetingIds = (siblingRows ?? []).map((r) => r.id)
+
+      // Count expected submitters — exclude organiser
+      const expectedCount = (meeting.attendee_emails as string[]).filter(
+        (e) => e.toLowerCase() !== meeting.organiser_email!.toLowerCase()
+      ).length
+
+      if (expectedCount > 0) {
+        const { data: allUpdates } = await supabaseAdmin
+          .from('status_updates')
+          .select('blockers')
+          .in('meeting_id', allMeetingIds)
+
+        const submittedCount = allUpdates?.length ?? 0
+        const hasBlockers = (allUpdates ?? []).some((u) => u.blockers?.trim())
+
+        // Only fire when this submission exactly completes the set and no one has blockers
+        if (submittedCount === expectedCount && !hasBlockers) {
+          const { data: organiser } = await supabaseAdmin
+            .from('users')
+            .select('slack_user_id')
+            .eq('email', meeting.organiser_email)
+            .single()
+
+          if (organiser?.slack_user_id) {
+            await sendCancellationSuggestion(
+              organiser.slack_user_id,
+              meeting.title,
+              meeting_id,
+              submittedCount
+            )
+            console.log(`Cancellation suggestion sent for "${meeting.title}" — ${submittedCount}/${expectedCount} submitted, no blockers`)
+          }
+        }
+      }
+    }
+  } catch (checkErr) {
+    console.error('Cancellation suggestion check failed:', checkErr)
+  }
 
   return NextResponse.json(saved)
 }

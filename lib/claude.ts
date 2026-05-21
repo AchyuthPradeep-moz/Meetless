@@ -4,7 +4,7 @@ import type { MeetingPayload, ClassificationResult, Classification } from '@/typ
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // Retries fn up to `retries` times on overloaded (529) or rate-limit (429) errors.
-// Delay grows linearly: 3s, 6s, 9s. Any other error is rethrown immediately.
+// Exponential backoff: 2s, 4s, 8s. Any other error is rethrown immediately.
 async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
   for (let i = 0; i < retries; i++) {
     try {
@@ -12,7 +12,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
     } catch (err: any) {
       if (i === retries - 1) throw err
       if (err?.status === 529 || err?.status === 429) {
-        await new Promise((r) => setTimeout(r, 3000 * (i + 1)))
+        await new Promise((r) => setTimeout(r, 2000 * Math.pow(2, i)))
         continue
       }
       throw err
@@ -119,18 +119,19 @@ export async function batchClassify(
   return results
 }
 
-// Generates a polite draft message suggesting an async meeting be handled asynchronously.
+// Generates a draft message from senderName to the organiser suggesting async handling.
 // Always shown to the user for approval — never sent automatically.
 export async function generateAsyncDraftMessage(
   meetingTitle: string,
   attendeeCount: number,
-  duration: number
+  duration: number,
+  senderName: string
 ): Promise<string> {
   const message = await withRetry(() =>
     client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 200,
-      system: 'Write a polite, professional message under 100 words to a meeting organiser suggesting the meeting could be handled asynchronously. Return only the message text, no subject line.',
+      system: `Write a short professional message from ${senderName} to the meeting organiser suggesting the meeting could be handled asynchronously. Start with "Hi, this is ${senderName}." or "Hey, ${senderName} here." Be polite, specific to the meeting title, under 80 words. Return only the message text.`,
       messages: [
         {
           role: 'user',
@@ -143,14 +144,17 @@ export async function generateAsyncDraftMessage(
   return (message.content[0] as { type: 'text'; text: string }).text.trim()
 }
 
-// Generates a polite draft message indicating the user will attend passively.
+// Generates a draft message from senderName to the organiser indicating passive attendance.
 // Always shown to the user for approval — never sent automatically.
-export async function generatePassiveDraftMessage(meetingTitle: string): Promise<string> {
+export async function generatePassiveDraftMessage(
+  meetingTitle: string,
+  senderName: string
+): Promise<string> {
   const message = await withRetry(() =>
     client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 150,
-      system: 'Write a polite, professional message under 80 words to a meeting organiser saying the sender will attend passively. Return only the message text, no subject line.',
+      system: `Write a short professional message from ${senderName} to the meeting organiser letting them know they will attend passively. Start with the sender's name. Under 60 words. Return only the message text.`,
       messages: [
         {
           role: 'user',
@@ -180,12 +184,14 @@ export async function generateAsyncSummary(
     )
     .join('\n')
 
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 400,
-    system: 'Summarise these team status updates in 2-3 sentences. Highlight any blockers. Be concise.',
-    messages: [{ role: 'user', content }],
-  })
+  const message = await withRetry(() =>
+    client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      system: 'Summarise these team status updates in 2-3 sentences. Highlight any blockers. Be concise.',
+      messages: [{ role: 'user', content }],
+    })
+  )
 
   return (message.content[0] as { type: 'text'; text: string }).text
 }
@@ -194,12 +200,14 @@ export async function generateAsyncSummary(
 export async function generateSummary(
   transcript: string
 ): Promise<{ summary: string; action_items: string }> {
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 600,
-    system: 'Summarise the meeting transcript. Return JSON: { summary, action_items }.',
-    messages: [{ role: 'user', content: transcript.slice(0, 4000) }],
-  })
+  const message = await withRetry(() =>
+    client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      system: 'Summarise the meeting transcript. Return JSON: { summary, action_items }.',
+      messages: [{ role: 'user', content: transcript.slice(0, 4000) }],
+    })
+  )
 
   const text = (message.content[0] as { type: 'text'; text: string }).text
   return JSON.parse(text)

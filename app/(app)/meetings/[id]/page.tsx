@@ -175,6 +175,7 @@ export default async function MeetingDetailPage({ params }: Props) {
               classification={cls}
               initialDraft={meeting.draft_message ?? null}
               initialDraftSent={meeting.draft_sent ?? false}
+              organiserEmail={meeting.organiser_email ?? null}
             />
           )}
 

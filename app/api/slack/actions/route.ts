@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendDM, sendOutcomeTracking } from '@/lib/slack'
+import { createFocusBlock } from '@/lib/calendar'
+import { slackClient } from '@/lib/slack'
+import type { User } from '@/types/user'
 
-// Handles all Slack interactive button actions:
-//   approve_<id>         — send draft to organiser, start outcome tracking
-//   discard_<id>         — clear the draft
-//   outcome_cancelled_<id> / outcome_async_<id> / outcome_happened_<id>
+// Handles Slack interactive button actions:
+//   cancel_suggest_<id>         — mark meeting as cancelled
+//   keep_meeting_<id>           — acknowledge, keep meeting as scheduled
+//   outcome_cancelled/async/happened_<id>
+//   block_focus__<userId>__<isoStart>__<durationMins>
+//   dismiss_focus__<userId>__<isoStart>__<durationMins>
 export async function POST(req: NextRequest) {
   const text = await req.text()
   const payload = JSON.parse(new URLSearchParams(text).get('payload') ?? '{}')
@@ -15,79 +19,37 @@ export async function POST(req: NextRequest) {
 
   const value: string = action.value ?? ''
   const responseUrl: string = payload.response_url ?? ''
-  const senderSlackUserId: string = payload.user?.id ?? ''
 
-  // ── approve_ ────────────────────────────────────────────────────────────────
-  if (value.startsWith('approve_')) {
-    const meetingId = value.slice('approve_'.length)
-
-    const { data: meeting } = await supabaseAdmin
-      .from('meetings')
-      .select('title, draft_message, organiser_email, classification')
-      .eq('id', meetingId)
-      .single()
-
-    let organiserSlackUserId: string | null = null
-
-    if (meeting?.draft_message && meeting?.organiser_email) {
-      const { data: organiserUser } = await supabaseAdmin
-        .from('users')
-        .select('id, slack_user_id')
-        .eq('email', meeting.organiser_email)
-        .single()
-
-      if (organiserUser?.slack_user_id) {
-        await sendDM(organiserUser.slack_user_id, meeting.draft_message)
-        organiserSlackUserId = organiserUser.slack_user_id
-        console.log(`Draft sent to organiser ${meeting.organiser_email}`)
-      } else {
-        console.log(`Organiser ${meeting.organiser_email} not on Meetless — cannot send via Slack`)
-      }
-    }
-
-    // Look up the sender's internal user id so we can relay replies back to them
-    const { data: senderUser } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('slack_user_id', senderSlackUserId)
-      .single()
+  // ── cancel_suggest_ ──────────────────────────────────────────────────────
+  if (value.startsWith('cancel_suggest_')) {
+    const meetingId = value.slice('cancel_suggest_'.length)
 
     await supabaseAdmin
       .from('meetings')
-      .update({
-        draft_sent: true,
-        draft_sent_to_slack_user_id: organiserSlackUserId,
-        draft_sent_by_user_id: senderUser?.id ?? null,
-      })
-      .eq('id', meetingId)
-
-    // Follow-up outcome tracking DM to the person who approved
-    if (senderSlackUserId && meeting?.title) {
-      await sendOutcomeTracking(senderSlackUserId, meeting.title, meetingId)
-    }
-
-    if (responseUrl) {
-      await fetch(responseUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ replace_original: true, text: '✅ Message sent to organiser' }),
-      })
-    }
-
-  // ── discard_ ────────────────────────────────────────────────────────────────
-  } else if (value.startsWith('discard_')) {
-    const meetingId = value.slice('discard_'.length)
-
-    await supabaseAdmin
-      .from('meetings')
-      .update({ draft_message: null })
+      .update({ outcome: 'cancelled' })
       .eq('id', meetingId)
 
     if (responseUrl) {
       await fetch(responseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ replace_original: true, text: '🗑️ Draft discarded' }),
+        body: JSON.stringify({
+          replace_original: true,
+          text: '✅ Got it — meeting marked as cancelled. Go ahead and remove it from the calendar.',
+        }),
+      })
+    }
+
+  // ── keep_meeting_ ─────────────────────────────────────────────────────────
+  } else if (value.startsWith('keep_meeting_')) {
+    if (responseUrl) {
+      await fetch(responseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          replace_original: true,
+          text: '👍 Keeping the meeting as scheduled.',
+        }),
       })
     }
 
@@ -107,22 +69,127 @@ export async function POST(req: NextRequest) {
     const outcome = outcomeMap[outcomeType]
     if (!outcome) return NextResponse.json({ ok: true })
 
+    const { data: meeting } = await supabaseAdmin
+      .from('meetings')
+      .select('title, duration')
+      .eq('id', meetingId)
+      .single()
+
     await supabaseAdmin
       .from('meetings')
       .update({ outcome })
       .eq('id', meetingId)
 
-    const confirmationText: Record<string, string> = {
-      cancelled: '✅ Great! Meeting cancelled. You saved everyone\'s time! 🎉',
-      async: '🔄 Nice! Meeting converted to async. Status board is ready.',
-      happened: '❌ Noted. The AI will learn from this for future classifications.',
+    const title = meeting?.title ?? 'the meeting'
+    const duration = meeting?.duration ?? 0
+
+    let confirmationText: string
+    if (outcomeType === 'cancelled') {
+      confirmationText = `✅ Got it — *${title}* was cancelled. You saved ${duration} minutes! 🎉`
+    } else if (outcomeType === 'async') {
+      confirmationText = `🔄 Got it — *${title}* is going async instead. You saved ${duration} minutes by skipping the meeting! The status board has everyone's updates.`
+    } else {
+      confirmationText = `❌ Noted — *${title}* happened as planned. No savings this time — Meetless will learn from this.`
     }
 
     if (responseUrl) {
       await fetch(responseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ replace_original: true, text: confirmationText[outcomeType] }),
+        body: JSON.stringify({ replace_original: true, text: confirmationText }),
+      })
+    }
+
+  // ── block_focus__ ─────────────────────────────────────────────────────────
+  } else if (value.startsWith('block_focus__')) {
+    // value: block_focus__<userId>__<isoStart>__<durationMins>
+    const parts = value.split('__')
+    const userId = parts[1]
+    const isoStart = parts[2]
+    const durationMins = parseInt(parts[3], 10)
+
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single<User>()
+
+    if (!user || !user.refresh_token) {
+      if (responseUrl) {
+        await fetch(responseUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ replace_original: true, text: '❌ Could not block focus time — Google not connected.' }),
+        })
+      }
+      return NextResponse.json({ ok: true })
+    }
+
+    try {
+      const startTime = new Date(isoStart)
+      const endTime = new Date(startTime.getTime() + durationMins * 60 * 1000)
+
+      await createFocusBlock(user, startTime, durationMins)
+
+      // Set Slack status emoji for the duration of the focus block
+      if (user.slack_user_id) {
+        try {
+          await slackClient.users.profile.set({
+            user: user.slack_user_id,
+            profile: {
+              status_text: 'In focus mode',
+              status_emoji: ':no_bell:',
+              status_expiration: Math.floor(endTime.getTime() / 1000),
+            } as Record<string, unknown>,
+          })
+        } catch (statusErr) {
+          // Status emoji is best-effort — don't fail the whole action
+          console.error('Failed to set Slack status:', statusErr)
+        }
+      }
+
+      // Format confirmation time in IST
+      const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+      const startIST = new Date(startTime.getTime() + IST_OFFSET_MS)
+      const endIST = new Date(endTime.getTime() + IST_OFFSET_MS)
+      const fmt = (d: Date) => {
+        const h = d.getUTCHours() % 12 || 12
+        const m = d.getUTCMinutes()
+        const ap = d.getUTCHours() >= 12 ? 'pm' : 'am'
+        return m === 0 ? `${h}${ap}` : `${h}:${String(m).padStart(2, '0')}${ap}`
+      }
+
+      if (responseUrl) {
+        await fetch(responseUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            replace_original: true,
+            text: `🔕 Focus time blocked: ${fmt(startIST)}–${fmt(endIST)}. Your Slack status is set until then.`,
+          }),
+        })
+      }
+    } catch (err) {
+      console.error('Failed to create focus block:', err)
+      if (responseUrl) {
+        await fetch(responseUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ replace_original: true, text: '❌ Failed to block focus time. Try reconnecting Google in Settings.' }),
+        })
+      }
+    }
+
+  // ── dismiss_focus__ ───────────────────────────────────────────────────────
+  } else if (value.startsWith('dismiss_focus__')) {
+    if (responseUrl) {
+      await fetch(responseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          replace_original: true,
+          text: '👍 No problem — I won\'t suggest this again today.',
+        }),
       })
     }
   }

@@ -229,9 +229,10 @@ export default function AsyncBoardClient({
     }
   }, [meeting.id])
 
-  // On mount if already submitted: load dashboard + auto-summarise if needed
+  // On mount: load dashboard + auto-summarise if needed.
+  // Organiser never submits so we check isOrganiser separately.
   useEffect(() => {
-    if (!initialHasSubmitted) return
+    if (!initialHasSubmitted && !isOrganiser) return
     fetchBoard().then((count) => {
       if (count >= 1 && !initialSummary) generateSummary()
     })

@@ -7,10 +7,11 @@ import MeetingCard from '@/components/meetings/MeetingCard'
 import type { Meeting, Classification } from '@/types/meeting'
 
 interface OutcomeStats {
+  meetings_saved: number
+  hours_saved: string
   cancelled: number
-  async: number
+  went_async: number
   happened: number
-  hours_saved: number
 }
 
 type Filter = Classification | 'all'
@@ -132,10 +133,13 @@ export default function DashboardClient({ slackConnected }: Props) {
   const week = getWeekBounds(weekOffset)
   const now = new Date()
 
-  // Safety net: filter out past meetings in case DB cleanup missed any
+  // Hide a meeting only once it has fully ended, not when it starts
   const weekMeetings = meetings.filter((m) => {
-    const t = new Date(m.start_time)
-    return t >= now && t >= week.start && t < week.end
+    const end = m.end_time
+      ? new Date(m.end_time)
+      : new Date(new Date(m.start_time).getTime() + m.duration * 60 * 1000)
+    const start = new Date(m.start_time)
+    return end > now && start >= week.start && start < week.end
   })
 
   const asyncCount = weekMeetings.filter((m) => m.classification === 'async').length
@@ -220,28 +224,27 @@ export default function DashboardClient({ slackConnected }: Props) {
           </div>
         </div>
 
-        {outcomes && (outcomes.cancelled > 0 || outcomes.async > 0 || outcomes.happened > 0) && (
+        {outcomes && (outcomes.meetings_saved > 0 || outcomes.happened > 0) && (
           <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-600">Outcomes this month</span>
+              <span className="text-sm text-gray-600">This month</span>
             </div>
             <div className="flex items-center gap-6">
-              {outcomes.cancelled > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-lg text-gray-900">{outcomes.cancelled}</span>
-                  <span className="text-sm text-gray-500">meeting{outcomes.cancelled === 1 ? '' : 's'} cancelled</span>
+              {outcomes.meetings_saved > 0 && (
+                <div>
+                  <span className="text-lg text-gray-900">{outcomes.meetings_saved} meeting{outcomes.meetings_saved === 1 ? '' : 's'} saved</span>
+                  <span className="text-sm text-gray-500 ml-2">
+                    ({[
+                      outcomes.cancelled > 0 ? `${outcomes.cancelled} cancelled` : '',
+                      outcomes.went_async > 0 ? `${outcomes.went_async} went async` : '',
+                    ].filter(Boolean).join(' + ')})
+                  </span>
                 </div>
               )}
-              {outcomes.async > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-lg text-gray-900">{outcomes.async}</span>
-                  <span className="text-sm text-gray-500">converted to async</span>
-                </div>
-              )}
-              {outcomes.hours_saved > 0 && (
+              {parseFloat(outcomes.hours_saved) > 0 && (
                 <div className="flex items-center gap-2 ml-auto px-3 py-1 bg-green-50 border border-green-200 rounded-lg">
-                  <span className="text-sm font-medium text-green-700">{outcomes.hours_saved}h saved</span>
+                  <span className="text-sm font-medium text-green-700">{outcomes.hours_saved}h recovered</span>
                 </div>
               )}
             </div>

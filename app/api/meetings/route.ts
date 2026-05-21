@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
   console.log('Tokens: access_token=', !!user.access_token, '| refresh_token=', !!user.refresh_token)
 
   const now = new Date()
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
   // Force reclassify: wipe all meetings for this user so everything is re-fetched and re-classified
   const force = req.nextUrl.searchParams.get('force') === 'true'
@@ -60,17 +61,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(fallback ?? [])
   }
 
-  // BUG 1 FIX — Cleanup: remove deleted + past meetings from DB
+  // Cleanup: remove cancelled + old past meetings from DB
   const freshEventIds = new Set(googleMeetings.map((m) => m.google_event_id))
 
-  // Delete meetings that no longer exist in Google Calendar
+  // Delete meetings removed from Google Calendar, but only if they ended >7 days ago.
+  // Recent past meetings won't appear in the upcoming Calendar feed — keep them so the
+  // transcript cron has time to find and process them.
   const { data: dbMeetingsForCleanup } = await supabaseAdmin
     .from('meetings')
-    .select('id, google_event_id, title')
+    .select('id, google_event_id, title, end_time, start_time')
     .eq('user_id', user.id)
 
   const staleIds = (dbMeetingsForCleanup ?? [])
-    .filter((m) => !freshEventIds.has(m.google_event_id))
+    .filter((m) => {
+      if (freshEventIds.has(m.google_event_id)) return false
+      const end = m.end_time ? new Date(m.end_time) : new Date(new Date(m.start_time).getTime() + 60 * 60 * 1000)
+      // Future meetings not in Google Calendar feed → deleted/cancelled → remove immediately
+      if (end > now) return true
+      // Past meetings → keep for 7 days so the transcript cron can still process them
+      return end < sevenDaysAgo
+    })
     .map((m) => m.id)
 
   if (staleIds.length > 0) {
@@ -81,16 +91,17 @@ export async function GET(req: NextRequest) {
     await supabaseAdmin.from('meetings').delete().in('id', staleIds)
   }
 
-  // Delete past meetings (skip when include_past=true for testing)
+  // Delete meetings that ended more than 7 days ago (skip when include_past=true for testing).
+  // Keeps recent past rows alive so the transcript cron can still process them.
   const includePast = req.nextUrl.searchParams.get('include_past') === 'true'
   if (!includePast) {
     const { error: pastDeleteErr } = await supabaseAdmin
       .from('meetings')
       .delete()
       .eq('user_id', user.id)
-      .lt('start_time', now.toISOString())
-    if (pastDeleteErr) console.error('Failed to delete past meetings:', pastDeleteErr)
-    else console.log('Cleaned past meetings (before', now.toISOString(), ')')
+      .or(`end_time.lt.${sevenDaysAgo.toISOString()},and(start_time.lt.${sevenDaysAgo.toISOString()},end_time.is.null)`)
+    if (pastDeleteErr) console.error('Failed to delete old past meetings:', pastDeleteErr)
+    else console.log('Cleaned meetings older than 7 days (cutoff', sevenDaysAgo.toISOString(), ')')
   } else {
     console.log('include_past=true — skipping past meeting cleanup')
   }

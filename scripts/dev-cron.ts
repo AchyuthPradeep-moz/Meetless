@@ -71,6 +71,8 @@ async function checkDigests(): Promise<void> {
   // One call sends to all users whose digest_time matches current server UTC time.
   // The server-side runDailyDigest also guards last_digest_sent, so duplicates are safe.
   await call('/api/cron/digest')
+  // Focus suggestion fires alongside digest — same audience, same moment
+  await call('/api/cron/focus-suggest')
 }
 
 async function runMinutely(): Promise<void> {
@@ -92,16 +94,18 @@ async function runMinutely(): Promise<void> {
   console.log(`[cron] Checking nudge — async meetings in 30 min: ${nudgeMeetings?.length ?? 0}`)
   if (nudgeMeetings?.length) await call('/api/cron/nudge')
 
-  // Only call board-link if there are async meetings starting right now (within 1 min)
-  const in1 = new Date(now.getTime() + 60 * 1000)
+  // Board-link: only fire after start_time so the submission count is final.
+  // Backward window (now−10min → now) catches delayed cron ticks without a forward gap
+  // that would send the message before members have had a chance to submit.
+  const tenMinAgo = new Date(now.getTime() - 10 * 60 * 1000)
   const { data: boardMeetings } = await supabase
     .from('meetings')
     .select('id')
     .eq('classification', 'async')
     .eq('board_link_sent', false)
-    .gte('start_time', now.toISOString())
-    .lte('start_time', in1.toISOString())
-  console.log(`[cron] Checking board-link — async meetings starting now: ${boardMeetings?.length ?? 0}`)
+    .gte('start_time', tenMinAgo.toISOString())
+    .lte('start_time', now.toISOString())
+  console.log(`[cron] Board-link check — meetings starting now:`, boardMeetings?.length ?? 0)
   if (boardMeetings?.length) await call('/api/cron/board-link')
 
   await call('/api/cron/transcripts')
