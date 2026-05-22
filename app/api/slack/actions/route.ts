@@ -10,6 +10,9 @@ import type { User } from '@/types/user'
 //   outcome_cancelled/async/happened_<id>
 //   block_focus__<userId>__<isoStart>__<durationMins>
 //   dismiss_focus__<userId>__<isoStart>__<durationMins>
+//
+// Returns 200 immediately to satisfy Slack's 3-second timeout,
+// then processes the action in the background.
 export async function POST(req: NextRequest) {
   const text = await req.text()
   const payload = JSON.parse(new URLSearchParams(text).get('payload') ?? '{}')
@@ -17,7 +20,18 @@ export async function POST(req: NextRequest) {
 
   if (!action) return NextResponse.json({ ok: true })
 
-  const value: string = action.value ?? ''
+  console.log('Slack action received:', action.value)
+
+  // Fire-and-forget so Slack gets 200 within 3 seconds
+  processSlackAction(payload).catch((err) => console.error('Slack action processing failed:', err))
+
+  return NextResponse.json({ ok: true })
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function processSlackAction(payload: any) {
+  const action = payload.actions?.[0]
+  const value: string = action?.value ?? ''
   const responseUrl: string = payload.response_url ?? ''
 
   // ── cancel_suggest_ ──────────────────────────────────────────────────────
@@ -67,7 +81,7 @@ export async function POST(req: NextRequest) {
       happened: 'happened',
     }
     const outcome = outcomeMap[outcomeType]
-    if (!outcome) return NextResponse.json({ ok: true })
+    if (!outcome) return
 
     const { data: meeting } = await supabaseAdmin
       .from('meetings')
@@ -122,7 +136,7 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({ replace_original: true, text: '❌ Could not block focus time — Google not connected.' }),
         })
       }
-      return NextResponse.json({ ok: true })
+      return
     }
 
     try {
@@ -193,6 +207,4 @@ export async function POST(req: NextRequest) {
       })
     }
   }
-
-  return NextResponse.json({ ok: true })
 }

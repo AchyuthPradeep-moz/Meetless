@@ -16,6 +16,13 @@ interface OutcomeStats {
 
 type Filter = Classification | 'all'
 
+function getMonday(d: Date): Date {
+  const mon = new Date(d)
+  mon.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  mon.setHours(0, 0, 0, 0)
+  return mon
+}
+
 function getWeekBounds(offset: number): { start: Date; end: Date; label: string } {
   const now = new Date()
   const mon = new Date(now)
@@ -159,7 +166,8 @@ export default function DashboardClient({ slackConnected }: Props) {
             <div className="flex items-center gap-2 mt-1">
               <button
                 onClick={() => setWeekOffset((o) => o - 1)}
-                className="p-1 rounded hover:bg-gray-100 transition-colors"
+                disabled={week.start <= getMonday(new Date())}
+                className={`p-1 rounded transition-colors ${week.start <= getMonday(new Date()) ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer'}`}
                 aria-label="Previous week"
               >
                 <ChevronLeft className="w-4 h-4 text-gray-500" />

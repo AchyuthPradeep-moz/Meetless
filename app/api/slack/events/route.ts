@@ -39,7 +39,9 @@ export async function POST(req: NextRequest) {
     !!event.user
 
   if (isHumanMessage) {
-    console.log('Qualifying message from user:', event.user, '— checking relay')
+    console.log('Message from:', event.user)
+    console.log('Message text:', event.text)
+    console.log('Checking for draft sent to:', event.user)
     // Fire-and-forget: return 200 immediately so Slack does not retry,
     // then complete the relay in the background
     relayOrganiserReply(event.user, event.text ?? '').catch((err) =>
@@ -73,6 +75,7 @@ async function relayOrganiserReply(senderSlackUserId: string, messageText: strin
     console.log('No matching meeting found for sender', senderSlackUserId)
     return
   }
+  console.log('Meeting found for relay:', meeting.title)
   if (!meeting.draft_sent_by_user_id) {
     console.log('Meeting found but draft_sent_by_user_id is null — cannot relay')
     return

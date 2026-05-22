@@ -77,6 +77,25 @@ export default function DraftMessage({ meetingId, classification, initialDraft, 
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleDiscard = async () => {
+    setLoading(true)
+    try {
+      await fetch('/api/meetings/draft/discard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meeting_id: meetingId }),
+      })
+      setDraft('')
+      setHasDraft(false)
+      setSent(false)
+      setSentToOrganiser(false)
+    } catch {
+      setError('Failed to discard draft')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="border-t border-gray-200 pt-6">
       <div className="flex items-center gap-2 mb-4">
@@ -155,6 +174,14 @@ export default function DraftMessage({ meetingId, classification, initialDraft, 
                 >
                   <RefreshCw className="w-4 h-4" />
                   Regenerate
+                </button>
+
+                <button
+                  onClick={handleDiscard}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 text-sm"
+                >
+                  Discard draft
                 </button>
               </div>
             </>
