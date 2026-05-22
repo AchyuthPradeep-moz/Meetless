@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     const organiserName = meeting.organiser_email
       ? (meeting.organiser_email.split('@')[0].split(/[._-]/)[0] ?? 'the organiser')
-          .replace(/^./, (c) => c.toUpperCase())
+          .replace(/^./, (c: string) => c.toUpperCase())
       : 'the organiser'
 
     const outcomeMessage =
