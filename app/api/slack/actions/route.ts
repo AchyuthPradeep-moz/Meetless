@@ -18,12 +18,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const text = await req.text()
-    // Slack sends payload as URL-encoded form data: payload=%7B%22type%22%3A...
-    const payloadString = new URLSearchParams(text).get('payload')
-    if (!payloadString) {
-      console.error('No payload found in request body')
+    console.log('Slack action raw body prefix:', text.slice(0, 80))
+
+    // Slack sends payload as: payload=%7B%22type%22%3A%22block_actions%22...
+    // Must use decodeURIComponent — URLSearchParams decodes '+' as space which corrupts JSON
+    if (!text.startsWith('payload=')) {
+      console.error('Unexpected body format — does not start with payload=')
       return NextResponse.json({ error: 'No payload' }, { status: 400 })
     }
+    const payloadString = decodeURIComponent(text.slice('payload='.length))
     payload = JSON.parse(payloadString)
   } catch (err) {
     console.error('Slack action parse error:', err)
