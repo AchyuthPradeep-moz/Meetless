@@ -37,6 +37,7 @@ export async function sendMorningDigest(
   meetings: DigestMeeting[]
 ): Promise<void> {
   try {
+    const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
     const now = new Date()
     const dateStr = now.toLocaleDateString('en-GB', {
       weekday: 'long',
@@ -101,7 +102,7 @@ export async function sendMorningDigest(
         accessory: {
           type: 'button',
           text: { type: 'plain_text', text: 'View Details' },
-          url: `http://localhost:3000/meetings/${m.id}`,
+          url: `${baseUrl}/meetings/${m.id}`,
           action_id: `view_meeting_${i}`,
         },
       })
@@ -125,7 +126,7 @@ export async function sendMorningDigest(
         {
           type: 'button',
           text: { type: 'plain_text', text: 'Open Dashboard →' },
-          url: 'http://localhost:3000/dashboard',
+          url: `${baseUrl}/dashboard`,
           action_id: 'open_dashboard',
         },
       ],
