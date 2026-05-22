@@ -223,18 +223,20 @@ export async function sendAsyncNudge(
 export async function sendOutcomeTracking(
   slackUserId: string,
   meetingTitle: string,
-  meetingId: string
+  meetingId: string,
+  outcomeMessage?: string
 ): Promise<void> {
   try {
+    const messageText = outcomeMessage ?? `📊 We'll track what happens with this meeting.\nLet us know the outcome when you find out:`
     await slackClient.chat.postMessage({
       channel: slackUserId,
-      text: `📊 Track the outcome for "${meetingTitle}"`,
+      text: `✉️ Message sent — track outcome for "${meetingTitle}"`,
       blocks: [
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `📊 We'll track what happens with this meeting.\nLet us know the outcome when you find out:`,
+            text: messageText,
           },
         },
         {

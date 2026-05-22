@@ -22,10 +22,10 @@ export async function POST(req: NextRequest) {
     .eq('email', session.user.email)
     .single()
 
-  // Look up the meeting to get organiser email and title
+  // Look up the meeting to get organiser email, title, and time details
   const { data: meeting } = await supabaseAdmin
     .from('meetings')
-    .select('id, title, organiser_email, classification')
+    .select('id, title, organiser_email, classification, start_time, duration')
     .eq('id', meeting_id)
     .single()
 
@@ -70,7 +70,27 @@ export async function POST(req: NextRequest) {
 
   // Send outcome-tracking buttons to the sender's Slack
   if (senderUser?.slack_user_id && meeting.title) {
-    await sendOutcomeTracking(senderUser.slack_user_id, meeting.title, meeting_id)
+    const formattedMeetingTime = new Date(meeting.start_time).toLocaleString('en-IN', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Kolkata',
+    })
+
+    const organiserName = meeting.organiser_email
+      ? (meeting.organiser_email.split('@')[0].split(/[._-]/)[0] ?? 'the organiser')
+          .replace(/^./, (c) => c.toUpperCase())
+      : 'the organiser'
+
+    const outcomeMessage =
+      `✉️ Your message about *${meeting.title}* was sent to ${organiserName}.\n\n` +
+      `📅 ${formattedMeetingTime} · ${meeting.duration ?? 0} min\n\n` +
+      `Let us know the outcome when you find out:`
+
+    await sendOutcomeTracking(senderUser.slack_user_id, meeting.title, meeting_id, outcomeMessage)
   }
 
   return NextResponse.json({ ok: true, sent: sentToOrganiser })

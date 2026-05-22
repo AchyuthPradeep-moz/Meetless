@@ -14,12 +14,26 @@ import type { User } from '@/types/user'
 // Returns 200 immediately to satisfy Slack's 3-second timeout,
 // then processes the action in the background.
 export async function POST(req: NextRequest) {
-  const text = await req.text()
-  const payload = JSON.parse(new URLSearchParams(text).get('payload') ?? '{}')
-  const action = payload.actions?.[0]
+  let payload: Record<string, unknown>
 
+  try {
+    const text = await req.text()
+    // Slack sends payload as URL-encoded form data: payload=%7B%22type%22%3A...
+    const payloadString = new URLSearchParams(text).get('payload')
+    if (!payloadString) {
+      console.error('No payload found in request body')
+      return NextResponse.json({ error: 'No payload' }, { status: 400 })
+    }
+    payload = JSON.parse(payloadString)
+  } catch (err) {
+    console.error('Slack action parse error:', err)
+    return NextResponse.json({ error: 'Parse error' }, { status: 400 })
+  }
+
+  const action = (payload.actions as { value?: string }[])?.[0]
   if (!action) return NextResponse.json({ ok: true })
 
+  console.log('Slack action type:', payload.type)
   console.log('Slack action received:', action.value)
 
   // Fire-and-forget so Slack gets 200 within 3 seconds
@@ -99,11 +113,11 @@ async function processSlackAction(payload: any) {
 
     let confirmationText: string
     if (outcomeType === 'cancelled') {
-      confirmationText = `✅ Got it — *${title}* was cancelled. You saved ${duration} minutes! 🎉`
+      confirmationText = `✅ Got it! *${title}* was cancelled.\nYou saved ${duration} minutes! 🎉`
     } else if (outcomeType === 'async') {
-      confirmationText = `🔄 Got it — *${title}* is going async instead. You saved ${duration} minutes by skipping the meeting! The status board has everyone's updates.`
+      confirmationText = `🔄 Got it! *${title}* is going async.\nYou saved ${duration} minutes!`
     } else {
-      confirmationText = `❌ Noted — *${title}* happened as planned. No savings this time — Meetless will learn from this.`
+      confirmationText = `❌ Noted. *${title}* happened as planned.`
     }
 
     if (responseUrl) {
