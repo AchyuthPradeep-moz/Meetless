@@ -62,52 +62,51 @@ function SummaryCard({ s }: { s: Summary }) {
   const parsed = parseSummary(s.summary)
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full p-5 flex items-center justify-between hover:bg-gray-50 transition-colors text-left"
+        className="w-full p-5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-4 mb-1">
-            <span className="text-gray-900 truncate">{s.meetings?.title ?? 'Untitled'}</span>
+            <span className="text-gray-900 dark:text-white truncate">{s.meetings?.title ?? 'Untitled'}</span>
             {s.meetings?.start_time && (
-              <span className="text-sm text-gray-500 flex-shrink-0">
+              <span className="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
                 {fmtDate(s.meetings.start_time)}
               </span>
             )}
           </div>
           {s.meetings?.start_time && (
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               {fmtTime(s.meetings.start_time)}
               {s.meetings.duration ? ` · ${s.meetings.duration} min` : ''}
             </div>
           )}
         </div>
         {open ? (
-          <ChevronUp className="w-5 h-5 text-gray-400 flex-shrink-0 ml-4" />
+          <ChevronUp className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 ml-4" />
         ) : (
-          <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0 ml-4" />
+          <ChevronDown className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 ml-4" />
         )}
       </button>
 
       {open && (
-        <div className="px-5 pb-5 border-t border-gray-200 pt-4 space-y-4">
-          {/* Structured summary */}
+        <div className="px-5 pb-5 border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4">
           {parsed ? (
             <>
               {parsed.summary && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">Summary</p>
-                  <p className="text-sm text-gray-800">{parsed.summary}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Summary</p>
+                  <p className="text-sm text-gray-800 dark:text-gray-200">{parsed.summary}</p>
                 </div>
               )}
               {parsed.keyPoints.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">Key points</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Key points</p>
                   <ul className="space-y-1.5">
                     {parsed.keyPoints.map((pt, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-gray-800">
-                        <span className="text-gray-400 flex-shrink-0">·</span>
+                      <li key={i} className="flex gap-2 text-sm text-gray-800 dark:text-gray-200">
+                        <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">·</span>
                         {pt}
                       </li>
                     ))}
@@ -116,10 +115,10 @@ function SummaryCard({ s }: { s: Summary }) {
               )}
               {(parsed.decisions ?? []).length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">Decisions</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Decisions</p>
                   <ul className="space-y-1.5">
                     {(parsed.decisions ?? []).map((d, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-gray-800">
+                      <li key={i} className="flex gap-2 text-sm text-gray-800 dark:text-gray-200">
                         <span className="text-purple-400 flex-shrink-0">·</span>
                         {d}
                       </li>
@@ -129,10 +128,10 @@ function SummaryCard({ s }: { s: Summary }) {
               )}
               {parsed.actionItems.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">Action items</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Action items</p>
                   <ul className="space-y-1.5">
                     {parsed.actionItems.map((item, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-gray-800">
+                      <li key={i} className="flex gap-2 text-sm text-gray-800 dark:text-gray-200">
                         <span className="text-blue-400 flex-shrink-0">→</span>
                         {item}
                       </li>
@@ -142,20 +141,18 @@ function SummaryCard({ s }: { s: Summary }) {
               )}
             </>
           ) : (
-            /* Legacy plain-text summary */
             s.summary && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-sm text-gray-800">{s.summary}</p>
+              <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                <p className="text-sm text-gray-800 dark:text-gray-200">{s.summary}</p>
               </div>
             )
           )}
 
-          {/* Expandable transcript */}
           {s.transcript_text && (
             <div>
               <button
                 onClick={() => setShowTranscript((v) => !v)}
-                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
               >
                 {showTranscript ? (
                   <ChevronUp className="w-3.5 h-3.5" />
@@ -165,8 +162,8 @@ function SummaryCard({ s }: { s: Summary }) {
                 {showTranscript ? 'Hide' : 'View'} full transcript
               </button>
               {showTranscript && (
-                <div className="mt-3 border border-gray-200 rounded-lg p-4 bg-gray-50">
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                <div className="mt-3 border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
                     {s.transcript_text}
                   </p>
                 </div>
@@ -177,7 +174,7 @@ function SummaryCard({ s }: { s: Summary }) {
           {s.meeting_id && (
             <Link
               href={`/summaries/${s.meeting_id}`}
-              className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               View full summary page
@@ -201,23 +198,23 @@ export default function SummariesClient({ summaries }: { summaries: Summary[] })
   return (
     <>
       <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
         <input
           type="text"
           placeholder="Search summaries…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
         />
       </div>
 
       {filtered.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-          <p className="text-gray-600">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center">
+          <p className="text-gray-600 dark:text-gray-300">
             {query ? 'No summaries match your search.' : 'No summaries yet.'}
           </p>
           {!query && (
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
               Summaries are automatically generated after passive meetings end.
             </p>
           )}

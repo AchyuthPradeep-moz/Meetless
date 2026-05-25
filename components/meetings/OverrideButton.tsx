@@ -51,20 +51,20 @@ export default function OverrideButton({ meetingId, current, onOverride }: Props
       <button
         onClick={(e) => { e.preventDefault(); setOpen(!open) }}
         disabled={loading}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
       >
         Override
         <ChevronDown className="w-3.5 h-3.5" />
       </button>
       {open && (
-        <div className="absolute top-full mt-1 left-0 bg-white border border-gray-200 rounded-lg shadow-md py-1 w-44 z-10">
+        <div className="absolute top-full mt-1 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md py-1 w-44 z-10">
           {options
             .filter((o) => o.value !== current)
             .map((o) => (
               <button
                 key={o.value}
                 onClick={(e) => { e.preventDefault(); override(o.value) }}
-                className="w-full px-4 py-2 text-left hover:bg-gray-50 text-sm text-gray-900"
+                className="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-gray-900 dark:text-gray-100"
               >
                 {o.label}
               </button>

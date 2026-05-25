@@ -12,6 +12,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} h-full`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('meetless_theme');if(t==='dark')document.documentElement.classList.add('dark');}())` }} />
+      </head>
       <body className="h-full antialiased">{children}</body>
     </html>
   )

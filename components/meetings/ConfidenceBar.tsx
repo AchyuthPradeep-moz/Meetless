@@ -1,5 +1,5 @@
 interface Props {
-  confidence: number // 0-100 — attendance necessity score from Claude
+  confidence: number
 }
 
 function barColor(confidence: number): string {
@@ -11,13 +11,13 @@ function barColor(confidence: number): string {
 export default function ConfidenceBar({ confidence }: Props) {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+      <div className="flex-1 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full ${barColor(confidence)}`}
           style={{ width: `${confidence}%` }}
         />
       </div>
-      <span className="text-xs text-gray-400 w-24 text-right">
+      <span className="text-xs text-gray-400 dark:text-gray-500 w-24 text-right">
         Attendance needed: {confidence}%
       </span>
     </div>

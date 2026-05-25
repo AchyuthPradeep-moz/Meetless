@@ -11,10 +11,8 @@ export default function OnboardingPage() {
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    // Mark this browser as a returning user so future logins skip consent
     localStorage.setItem('meetless_returning_user', '1')
 
-    // If Slack is already connected, skip onboarding entirely
     fetch('/api/user/status')
       .then((r) => r.json())
       .then((data) => {
@@ -39,30 +37,30 @@ export default function OnboardingPage() {
   if (checking) return null
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-8">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center gap-2 mb-12">
           {[1, 2, 3].map((n) => (
             <span key={n} className="flex items-center gap-2">
               <span
                 className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
-                  step >= n ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                  step >= n ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                 }`}
               >
                 {n}
               </span>
               {n < 3 && (
-                <span className={`h-0.5 w-16 ${step > n ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                <span className={`h-0.5 w-16 ${step > n ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`} />
               )}
             </span>
           ))}
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-8">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-8">
           {step === 2 && (
             <div className="text-center">
-              <h2 className="text-xl text-gray-900 mb-3">Connect your Slack workspace</h2>
-              <p className="text-gray-600 mb-8">
+              <h2 className="text-xl text-gray-900 dark:text-white mb-3">Connect your Slack workspace</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-8">
                 Meetless will send you reminders and notifications via Slack DM
               </p>
               <button
@@ -76,7 +74,7 @@ export default function OnboardingPage() {
               </button>
               <button
                 onClick={skipSlack}
-                className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
               >
                 Skip for now
               </button>
@@ -85,26 +83,26 @@ export default function OnboardingPage() {
 
           {step === 3 && (
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
               </div>
-              <h2 className="text-xl text-gray-900 mb-6">You&apos;re all set!</h2>
+              <h2 className="text-xl text-gray-900 dark:text-white mb-6">You&apos;re all set!</h2>
 
               <div className="space-y-3 mb-8 text-left">
-                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-lg">
-                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-sm text-gray-900">Google Calendar connected</span>
+                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <span className="text-sm text-gray-900 dark:text-white">Google Calendar connected</span>
                 </div>
-                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   {slackConnected ? (
                     <>
-                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                      <span className="text-sm text-gray-900">Slack connected</span>
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                      <span className="text-sm text-gray-900 dark:text-white">Slack connected</span>
                     </>
                   ) : (
                     <>
-                      <div className="w-5 h-5 border-2 border-gray-300 rounded-full flex-shrink-0" />
-                      <span className="text-sm text-gray-600">
+                      <div className="w-5 h-5 border-2 border-gray-300 dark:border-gray-600 rounded-full flex-shrink-0" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
                         Slack skipped — connect later in Settings
                       </span>
                     </>
@@ -112,7 +110,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              <p className="text-sm text-gray-600 mb-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
                 Every morning we&apos;ll classify your upcoming meetings and send you a digest
               </p>
 

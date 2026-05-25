@@ -3,9 +3,6 @@
 import { signIn } from 'next-auth/react'
 
 function handleSignIn() {
-  // Check if this browser has successfully signed in before.
-  // Returning users get the account-picker only (no permission screen).
-  // New users go through the full consent screen to obtain a refresh token.
   const isReturning = typeof window !== 'undefined' &&
     !!localStorage.getItem('meetless_returning_user')
 
@@ -17,19 +14,19 @@ function handleSignIn() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-8">
       <div className="w-full max-w-md">
-        <div className="bg-white border border-gray-200 rounded-lg p-10">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-10">
           <div className="text-center">
             <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl text-white font-semibold">M</span>
             </div>
-            <h1 className="text-2xl text-gray-900 mb-2">Meetless</h1>
-            <p className="text-gray-600 mb-8">Spend less time in meetings, more time doing</p>
+            <h1 className="text-2xl text-gray-900 dark:text-white mb-2">Meetless</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-8">Spend less time in meetings, more time doing</p>
 
             <button
               onClick={handleSignIn}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors mb-4"
+              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white transition-colors mb-4"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path d="M17.64 9.20443C17.64 8.56625 17.5827 7.95262 17.4764 7.36353H9V10.8449H13.8436C13.635 11.9699 13.0009 12.9231 12.0477 13.5613V15.8194H14.9564C16.6582 14.2526 17.64 11.9453 17.64 9.20443Z" fill="#4285F4"/>
@@ -40,7 +37,7 @@ export default function LoginPage() {
               Sign in with Google
             </button>
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               We only read your calendar. We never modify or delete events.
             </p>
           </div>

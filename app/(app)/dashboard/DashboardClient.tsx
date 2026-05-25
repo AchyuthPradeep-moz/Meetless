@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { RefreshCw, Users, Calendar, Clock, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
 import MeetingCard from '@/components/meetings/MeetingCard'
+import ThemeToggle from '@/components/layout/ThemeToggle'
 import type { Meeting, Classification } from '@/types/meeting'
 
 interface OutcomeStats {
@@ -66,7 +67,7 @@ const reasonMap: Record<Classification, string> = {
 }
 
 const filterConfig: { value: Filter; label: string; active: string }[] = [
-  { value: 'all', label: 'All meetings', active: 'bg-gray-900 text-white' },
+  { value: 'all', label: 'All meetings', active: 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' },
   { value: 'important', label: 'Important', active: 'bg-green-600 text-white' },
   { value: 'async', label: 'Async candidate', active: 'bg-purple-600 text-white' },
   { value: 'passive', label: 'Passive', active: 'bg-blue-600 text-white' },
@@ -104,7 +105,6 @@ export default function DashboardClient({ slackConnected }: Props) {
         if (status.googleConnected) {
           await fetchMeetings()
         }
-        // Fetch outcome stats in parallel — non-blocking
         fetch('/api/meetings/outcomes')
           .then((r) => r.json())
           .then((data) => { if (!data.error) setOutcomes(data) })
@@ -140,7 +140,6 @@ export default function DashboardClient({ slackConnected }: Props) {
   const week = getWeekBounds(weekOffset)
   const now = new Date()
 
-  // Hide a meeting only once it has fully ended, not when it starts
   const weekMeetings = meetings.filter((m) => {
     const end = m.end_time
       ? new Date(m.end_time)
@@ -162,23 +161,23 @@ export default function DashboardClient({ slackConnected }: Props) {
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl text-gray-900 mb-1">Your meetings</h2>
+            <h2 className="text-2xl text-gray-900 dark:text-white mb-1">Your meetings</h2>
             <div className="flex items-center gap-2 mt-1">
               <button
                 onClick={() => setWeekOffset((o) => o - 1)}
                 disabled={week.start <= getMonday(new Date())}
-                className={`p-1 rounded transition-colors ${week.start <= getMonday(new Date()) ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer'}`}
+                className={`p-1 rounded transition-colors ${week.start <= getMonday(new Date()) ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer'}`}
                 aria-label="Previous week"
               >
-                <ChevronLeft className="w-4 h-4 text-gray-500" />
+                <ChevronLeft className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               </button>
-              <span className="text-gray-600 text-sm">{week.label}</span>
+              <span className="text-gray-600 dark:text-gray-300 text-sm">{week.label}</span>
               <button
                 onClick={() => setWeekOffset((o) => o + 1)}
-                className="p-1 rounded hover:bg-gray-100 transition-colors"
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 aria-label="Next week"
               >
-                <ChevronRight className="w-4 h-4 text-gray-500" />
+                <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               </button>
               {weekOffset !== 0 && (
                 <button
@@ -191,8 +190,9 @@ export default function DashboardClient({ slackConnected }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             {slackConnected && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm border border-green-200">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg text-sm border border-green-200 dark:border-green-800">
                 <div className="w-2 h-2 bg-green-500 rounded-full" />
                 Slack connected
               </div>
@@ -200,7 +200,7 @@ export default function DashboardClient({ slackConnected }: Props) {
             <button
               onClick={handleSync}
               disabled={syncing || loading}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
               Re-sync calendar
@@ -209,40 +209,40 @@ export default function DashboardClient({ slackConnected }: Props) {
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
             <div className="flex items-center gap-3 mb-2">
-              <Calendar className="w-5 h-5 text-gray-600" />
-              <span className="text-gray-600">Total meetings</span>
+              <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <span className="text-gray-600 dark:text-gray-300">Total meetings</span>
             </div>
-            <div className="text-3xl text-gray-900">{totalCount}</div>
+            <div className="text-3xl text-gray-900 dark:text-white">{totalCount}</div>
           </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
             <div className="flex items-center gap-3 mb-2">
               <Clock className="w-5 h-5 text-purple-600" />
-              <span className="text-gray-600">Async candidates</span>
+              <span className="text-gray-600 dark:text-gray-300">Async candidates</span>
             </div>
-            <div className="text-3xl text-gray-900">{asyncCount}</div>
+            <div className="text-3xl text-gray-900 dark:text-white">{asyncCount}</div>
           </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
             <div className="flex items-center gap-3 mb-2">
               <Users className="w-5 h-5 text-blue-600" />
-              <span className="text-gray-600">Passive attendance</span>
+              <span className="text-gray-600 dark:text-gray-300">Passive attendance</span>
             </div>
-            <div className="text-3xl text-gray-900">{passiveCount}</div>
+            <div className="text-3xl text-gray-900 dark:text-white">{passiveCount}</div>
           </div>
         </div>
 
         {outcomes && (outcomes.meetings_saved > 0 || outcomes.happened > 0) && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
             <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-600">This month</span>
+              <TrendingUp className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">This month</span>
             </div>
             <div className="flex items-center gap-6">
               {outcomes.meetings_saved > 0 && (
                 <div>
-                  <span className="text-lg text-gray-900">{outcomes.meetings_saved} meeting{outcomes.meetings_saved === 1 ? '' : 's'} saved</span>
-                  <span className="text-sm text-gray-500 ml-2">
+                  <span className="text-lg text-gray-900 dark:text-white">{outcomes.meetings_saved} meeting{outcomes.meetings_saved === 1 ? '' : 's'} saved</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
                     ({[
                       outcomes.cancelled > 0 ? `${outcomes.cancelled} cancelled` : '',
                       outcomes.went_async > 0 ? `${outcomes.went_async} went async` : '',
@@ -251,8 +251,8 @@ export default function DashboardClient({ slackConnected }: Props) {
                 </div>
               )}
               {parseFloat(outcomes.hours_saved) > 0 && (
-                <div className="flex items-center gap-2 ml-auto px-3 py-1 bg-green-50 border border-green-200 rounded-lg">
-                  <span className="text-sm font-medium text-green-700">{outcomes.hours_saved}h recovered</span>
+                <div className="flex items-center gap-2 ml-auto px-3 py-1 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg">
+                  <span className="text-sm font-medium text-green-700 dark:text-green-400">{outcomes.hours_saved}h recovered</span>
                 </div>
               )}
             </div>
@@ -267,7 +267,7 @@ export default function DashboardClient({ slackConnected }: Props) {
               className={`px-4 py-2 rounded-full text-sm transition-colors ${
                 filter === value
                   ? active
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  : 'bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
               {label}
@@ -277,14 +277,14 @@ export default function DashboardClient({ slackConnected }: Props) {
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="flex items-center gap-3 text-gray-500">
+            <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
               <RefreshCw className="w-5 h-5 animate-spin" />
               <span className="text-sm">Syncing your calendar…</span>
             </div>
           </div>
         ) : googleConnected === false ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="text-gray-600 mb-3">Connect your Google Calendar to get started</p>
+            <p className="text-gray-600 dark:text-gray-300 mb-3">Connect your Google Calendar to get started</p>
             <Link href="/settings" className="text-sm text-blue-600 hover:underline">
               Go to Settings →
             </Link>
@@ -294,18 +294,18 @@ export default function DashboardClient({ slackConnected }: Props) {
             <p className="text-sm text-red-500 mb-3">{error}</p>
             <button
               onClick={handleSync}
-              className="text-sm text-gray-600 underline hover:text-gray-900"
+              className="text-sm text-gray-600 dark:text-gray-400 underline hover:text-gray-900 dark:hover:text-white"
             >
               Try again
             </button>
           </div>
         ) : Object.keys(grouped).length === 0 ? (
-          <p className="text-sm text-gray-400 mt-4">No meetings this week.</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-4">No meetings this week.</p>
         ) : (
           <div className="space-y-8">
             {Object.entries(grouped).map(([day, dayMeetings]) => (
               <div key={day}>
-                <h3 className="text-sm text-gray-500 mb-3">{day}</h3>
+                <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-3">{day}</h3>
                 <div className="space-y-3">
                   {dayMeetings.map((meeting) => (
                     <div key={meeting.id}>
@@ -315,7 +315,7 @@ export default function DashboardClient({ slackConnected }: Props) {
                       {meeting.classification === 'async' && (
                         <Link
                           href={`/async/${meeting.id}`}
-                          className="mt-1.5 flex items-center gap-1.5 px-3 py-1.5 text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors w-fit"
+                          className="mt-1.5 flex items-center gap-1.5 px-3 py-1.5 text-xs text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors w-fit"
                         >
                           View Status Board →
                         </Link>

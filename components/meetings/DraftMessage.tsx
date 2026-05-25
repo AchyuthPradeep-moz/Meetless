@@ -97,29 +97,29 @@ export default function DraftMessage({ meetingId, classification, initialDraft, 
   }
 
   return (
-    <div className="border-t border-gray-200 pt-6">
+    <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
       <div className="flex items-center gap-2 mb-4">
-        <MessageSquare className="w-4 h-4 text-gray-500" />
-        <h3 className="text-sm text-gray-600">Draft message to organiser</h3>
+        <MessageSquare className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+        <h3 className="text-sm text-gray-600 dark:text-gray-300">Draft message to organiser</h3>
       </div>
 
       {!hasDraft ? (
         <button
           onClick={generate}
           disabled={loading}
-          className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 text-sm"
+          className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 text-sm"
         >
           {loading ? 'Generating...' : 'Generate draft message'}
         </button>
       ) : (
         <div className="space-y-4">
           {sent && !sentToOrganiser ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-green-700">Message was already sent to the organiser.</p>
+            <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <p className="text-sm text-green-700 dark:text-green-400">Message was already sent to the organiser.</p>
             </div>
           ) : sentToOrganiser ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-green-700">
+            <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <p className="text-sm text-green-700 dark:text-green-400">
                 Message sent to {organiserEmail ?? 'the organiser'} via Slack.
               </p>
             </div>
@@ -130,21 +130,21 @@ export default function DraftMessage({ meetingId, classification, initialDraft, 
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   rows={6}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-800 resize-y focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4 text-sm text-gray-800 dark:text-gray-100 resize-y focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-500"
                 />
                 <div className="flex justify-between items-center mt-1">
                   {senderName ? (
-                    <p className="text-xs text-gray-400">Sending as: <span className="text-gray-600">{senderName} via Meetless</span></p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">Sending as: <span className="text-gray-600 dark:text-gray-300">{senderName} via Meetless</span></p>
                   ) : (
                     <span />
                   )}
-                  <p className="text-xs text-gray-400">{draft.length} characters</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">{draft.length} characters</p>
                 </div>
               </div>
 
               {organiserEmail && (
-                <p className="text-xs text-gray-500">
-                  This will be sent to: <span className="font-medium text-gray-700">{organiserEmail}</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  This will be sent to: <span className="font-medium text-gray-700 dark:text-gray-200">{organiserEmail}</span>
                 </p>
               )}
 
@@ -152,7 +152,7 @@ export default function DraftMessage({ meetingId, classification, initialDraft, 
                 <button
                   onClick={sendToOrganiser}
                   disabled={loading || !draft.trim()}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 text-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 text-sm"
                 >
                   <Send className="w-4 h-4" />
                   {loading ? 'Sending...' : 'Send to organiser'}
@@ -161,7 +161,7 @@ export default function DraftMessage({ meetingId, classification, initialDraft, 
                 <button
                   onClick={copyToClipboard}
                   disabled={!draft.trim()}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 text-sm"
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 text-sm"
                 >
                   {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
                   {copied ? 'Copied!' : 'Copy'}
@@ -170,7 +170,7 @@ export default function DraftMessage({ meetingId, classification, initialDraft, 
                 <button
                   onClick={generate}
                   disabled={loading}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 text-sm"
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 text-sm"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Regenerate
@@ -179,7 +179,7 @@ export default function DraftMessage({ meetingId, classification, initialDraft, 
                 <button
                   onClick={handleDiscard}
                   disabled={loading}
-                  className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 text-sm"
+                  className="flex items-center gap-2 px-4 py-2 border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50 text-sm"
                 >
                   Discard draft
                 </button>
@@ -189,7 +189,7 @@ export default function DraftMessage({ meetingId, classification, initialDraft, 
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400 mt-2">{error}</p>}
     </div>
   )
 }

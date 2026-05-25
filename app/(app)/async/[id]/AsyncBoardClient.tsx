@@ -35,15 +35,15 @@ interface Props {
 }
 
 const STATUS_OPTIONS = [
-  { value: 'done', label: 'Done', selected: 'bg-green-50 text-green-700 border-green-200' },
-  { value: 'in-progress', label: 'In Progress', selected: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { value: 'blocked', label: 'Blocked', selected: 'bg-red-50 text-red-700 border-red-200' },
+  { value: 'done', label: 'Done', selected: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' },
+  { value: 'in-progress', label: 'In Progress', selected: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' },
+  { value: 'blocked', label: 'Blocked', selected: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800' },
 ]
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string; label: string }> = {
-  done: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', label: 'Done' },
-  'in-progress': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'In Progress' },
-  blocked: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Blocked' },
+  done: { bg: 'bg-green-50 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400', border: 'border-green-200 dark:border-green-800', label: 'Done' },
+  'in-progress': { bg: 'bg-blue-50 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-800', label: 'In Progress' },
+  blocked: { bg: 'bg-red-50 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', border: 'border-red-200 dark:border-red-800', label: 'Blocked' },
 }
 
 function getInitials(email: string): string {
@@ -67,15 +67,15 @@ function StatusUpdateCard({ update, isCurrentUser = false }: { update: Update; i
   const email = update.user_email ?? 'unknown'
   const colors = update.status_tag ? STATUS_COLORS[update.status_tag] : null
   return (
-    <div className={`border rounded-lg p-5 ${isCurrentUser ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200'}`}>
+    <div className={`border rounded-lg p-5 ${isCurrentUser ? 'bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-          <span className="text-xs text-gray-600">{getInitials(email)}</span>
+        <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+          <span className="text-xs text-gray-600 dark:text-gray-300">{getInitials(email)}</span>
         </div>
         <div>
-          <div className="text-sm text-gray-900">
+          <div className="text-sm text-gray-900 dark:text-white">
             {getDisplayName(email)}
-            {isCurrentUser && <span className="text-gray-400 ml-1 text-xs">(you)</span>}
+            {isCurrentUser && <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(you)</span>}
           </div>
           {colors && (
             <span className={`inline-block px-2 py-0.5 rounded text-xs border ${colors.bg} ${colors.text} ${colors.border}`}>
@@ -87,20 +87,20 @@ function StatusUpdateCard({ update, isCurrentUser = false }: { update: Update; i
       <div className="space-y-3">
         {update.completed && (
           <div>
-            <div className="text-xs text-gray-500 mb-1">Completed</div>
-            <div className="text-sm text-gray-800">{update.completed}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Completed</div>
+            <div className="text-sm text-gray-800 dark:text-gray-200">{update.completed}</div>
           </div>
         )}
         {update.plan && (
           <div>
-            <div className="text-xs text-gray-500 mb-1">Today&apos;s plan</div>
-            <div className="text-sm text-gray-800">{update.plan}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Today&apos;s plan</div>
+            <div className="text-sm text-gray-800 dark:text-gray-200">{update.plan}</div>
           </div>
         )}
         {update.blockers && (
           <div>
-            <div className="text-xs text-red-500 mb-1">Blockers</div>
-            <div className="text-sm text-gray-800">{update.blockers}</div>
+            <div className="text-xs text-red-500 dark:text-red-400 mb-1">Blockers</div>
+            <div className="text-sm text-gray-800 dark:text-gray-200">{update.blockers}</div>
           </div>
         )}
       </div>
@@ -136,21 +136,21 @@ function PendingCard({
   }
 
   return (
-    <div className="border-2 border-dashed border-gray-200 rounded-lg p-5 flex items-center justify-between">
+    <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-5 flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center opacity-50">
-          <span className="text-xs text-gray-500">{getInitials(email)}</span>
+        <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center opacity-50">
+          <span className="text-xs text-gray-500 dark:text-gray-400">{getInitials(email)}</span>
         </div>
         <div>
-          <div className="text-sm text-gray-600">{getDisplayName(email)}</div>
-          <div className="text-xs text-gray-400">Waiting for update…</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">{getDisplayName(email)}</div>
+          <div className="text-xs text-gray-400 dark:text-gray-500">Waiting for update…</div>
         </div>
       </div>
       {userId && (
         <button
           onClick={sendNudge}
           disabled={nudging || nudged}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 flex-shrink-0"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex-shrink-0"
         >
           <Bell className="w-3.5 h-3.5" />
           {nudged ? 'Nudged!' : nudging ? '…' : 'Nudge'}
@@ -183,7 +183,6 @@ export default function AsyncBoardClient({
   const [generatingSummary, setGeneratingSummary] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
-  // Countdown timer
   useEffect(() => {
     const tick = () => {
       const diff = new Date(meeting.start_time).getTime() - Date.now()
@@ -198,7 +197,6 @@ export default function AsyncBoardClient({
     return () => clearInterval(id)
   }, [meeting.start_time])
 
-  // Fetches live board data; returns submitted count for callers
   const fetchBoard = useCallback(async (): Promise<number> => {
     const res = await fetch(`/api/async/status?meeting_id=${meeting.id}`)
     if (!res.ok) return 0
@@ -211,7 +209,6 @@ export default function AsyncBoardClient({
     return data.submitted_count ?? 0
   }, [meeting.id, meeting.attendee_count])
 
-  // Calls Claude to generate/regenerate the summary
   const generateSummary = useCallback(async () => {
     setGeneratingSummary(true)
     try {
@@ -223,14 +220,12 @@ export default function AsyncBoardClient({
       const data = await res.json()
       if (data.summary) setSummary(data.summary)
     } catch {
-      // silent — user can retry via Regenerate button
+      // silent
     } finally {
       setGeneratingSummary(false)
     }
   }, [meeting.id])
 
-  // On mount: load dashboard + auto-summarise if needed.
-  // Organiser never submits so we check isOrganiser separately.
   useEffect(() => {
     if (!initialHasSubmitted && !isOrganiser) return
     fetchBoard().then((count) => {
@@ -238,7 +233,6 @@ export default function AsyncBoardClient({
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-refresh board every 30 seconds when in dashboard state
   useEffect(() => {
     if (!initialHasSubmitted && !meetingStarted && !isOrganiser) return
     const id = setInterval(fetchBoard, 30_000)
@@ -267,106 +261,72 @@ export default function AsyncBoardClient({
 
   const start = new Date(meeting.start_time)
   const dateStr = start.toLocaleDateString('en-IN', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'Asia/Kolkata',
+    weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata',
   })
   const timeStr = start.toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: 'Asia/Kolkata',
+    hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
   })
 
-  // ── STATE 1: Not submitted, meeting hasn't started, and not the organiser ─
+  const textareaClass = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 resize-none'
+
   if (!hasSubmitted && !meetingStarted && !isOrganiser) {
     return (
       <div className="p-8">
         <div className="max-w-2xl mx-auto">
-          <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 text-sm">
+          <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 text-sm">
             <ArrowLeft className="w-4 h-4" />
             Back to dashboard
           </Link>
 
           <div className="mb-6">
-            <h1 className="text-2xl text-gray-900 mb-1">{meeting.title}</h1>
+            <h1 className="text-2xl text-gray-900 dark:text-white mb-1">{meeting.title}</h1>
             <div className="flex items-center gap-3 mt-2">
-              <span className="text-sm text-gray-500">{dateStr} at {timeStr}</span>
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 text-purple-700 rounded-lg text-sm border border-purple-200">
+              <span className="text-sm text-gray-500 dark:text-gray-400">{dateStr} at {timeStr}</span>
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-lg text-sm border border-purple-200 dark:border-purple-800">
                 <Clock className="w-3.5 h-3.5" />
                 <span className="tabular-nums">{timeLeft}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-5">
-            <h2 className="text-gray-900">Add your status update</h2>
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 space-y-5">
+            <h2 className="text-gray-900 dark:text-white">Add your status update</h2>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1.5">
+              <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1.5">
                 What did you complete since last meeting?
               </label>
-              <textarea
-                value={form.completed}
-                onChange={(e) => setForm({ ...form, completed: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 resize-none"
-                placeholder="Completed tasks, shipped features, resolved issues…"
-              />
+              <textarea value={form.completed} onChange={(e) => setForm({ ...form, completed: e.target.value })} rows={3} className={textareaClass} placeholder="Completed tasks, shipped features, resolved issues…" />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1.5">
+              <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1.5">
                 What will you work on today?
               </label>
-              <textarea
-                value={form.plan}
-                onChange={(e) => setForm({ ...form, plan: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 resize-none"
-                placeholder="Goals and tasks for today…"
-              />
+              <textarea value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })} rows={3} className={textareaClass} placeholder="Goals and tasks for today…" />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1.5">
-                Any blockers?{' '}
-                <span className="text-gray-400">(leave empty if none)</span>
+              <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1.5">
+                Any blockers? <span className="text-gray-400 dark:text-gray-500">(leave empty if none)</span>
               </label>
-              <textarea
-                value={form.blockers}
-                onChange={(e) => setForm({ ...form, blockers: e.target.value })}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 resize-none"
-                placeholder="Anything blocking your progress…"
-              />
+              <textarea value={form.blockers} onChange={(e) => setForm({ ...form, blockers: e.target.value })} rows={2} className={textareaClass} placeholder="Anything blocking your progress…" />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-2">Status</label>
+              <label className="block text-sm text-gray-600 dark:text-gray-300 mb-2">Status</label>
               <div className="flex gap-2">
                 {STATUS_OPTIONS.map(({ value, label, selected }) => (
-                  <button
-                    key={value}
-                    onClick={() => setForm({ ...form, status_tag: value })}
-                    className={`px-4 py-2 rounded-lg text-sm border transition-all ${
-                      form.status_tag === value
-                        ? selected
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
+                  <button key={value} onClick={() => setForm({ ...form, status_tag: value })}
+                    className={`px-4 py-2 rounded-lg text-sm border transition-all ${form.status_tag === value ? selected : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'}`}>
                     {label}
                   </button>
                 ))}
               </div>
             </div>
 
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || !form.completed.trim() || !form.plan.trim()}
-              className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition-colors disabled:opacity-50"
-            >
+            <button onClick={handleSubmit} disabled={submitting || !form.completed.trim() || !form.plan.trim()}
+              className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {submitting ? 'Submitting…' : 'Submit update'}
             </button>
@@ -381,15 +341,10 @@ export default function AsyncBoardClient({
     try { await fetchBoard() } finally { setRefreshing(false) }
   }
 
-  // ── STATE 2: Dashboard (submitted, organiser, or meeting already started) ─
   const currentUserUpdate = updates.find((u) => u.user_email === currentUserEmail)
   const otherUpdates = updates.filter((u) => u.user_email !== currentUserEmail)
-  // Exclude current user and organiser from pending list — organiser never submits
   const pendingAttendees = attendees.filter(
-    (a) =>
-      a.isMeetlessUser &&
-      !a.submitted &&
-      a.email !== currentUserEmail &&
+    (a) => a.isMeetlessUser && !a.submitted && a.email !== currentUserEmail &&
       a.email.toLowerCase() !== (organiserEmail ?? '').toLowerCase()
   )
   const blockerCount = updates.filter((u) => u.status_tag === 'blocked').length
@@ -397,35 +352,31 @@ export default function AsyncBoardClient({
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto">
-        <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 text-sm">
+        <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 text-sm">
           <ArrowLeft className="w-4 h-4" />
           Back to dashboard
         </Link>
 
-        {/* Meeting header */}
-        <div className="bg-white border border-gray-200 rounded-lg p-8 mb-6">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-8 mb-6">
           <div className="flex items-start justify-between mb-6">
             <div>
-              <h1 className="text-2xl text-gray-900 mb-1">{meeting.title}</h1>
+              <h1 className="text-2xl text-gray-900 dark:text-white mb-1">{meeting.title}</h1>
               <div className="flex items-center gap-3 mt-1">
-                <p className="text-sm text-gray-500">{dateStr} at {timeStr}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{dateStr} at {timeStr}</p>
                 {isOrganiser && (
-                  <span className="px-2 py-0.5 text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded">
+                  <span className="px-2 py-0.5 text-xs text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded">
                     You are the organiser
                   </span>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm border border-purple-200">
+              <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-lg text-sm border border-purple-200 dark:border-purple-800">
                 <Clock className="w-4 h-4" />
                 <span className="tabular-nums">{timeLeft}</span>
               </div>
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
+              <button onClick={handleRefresh} disabled={refreshing}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50">
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
@@ -433,16 +384,16 @@ export default function AsyncBoardClient({
           </div>
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              <span className="text-sm text-gray-600">
-                <span className="text-gray-900">{submittedCount} of {totalCount}</span> members submitted
+              <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">
+                <span className="text-gray-900 dark:text-white">{submittedCount} of {totalCount}</span> members submitted
               </span>
             </div>
             {blockerCount > 0 && (
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-500" />
-                <span className="text-sm text-gray-600">
-                  <span className="text-gray-900">{blockerCount}</span>{' '}
+                <AlertCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  <span className="text-gray-900 dark:text-white">{blockerCount}</span>{' '}
                   {blockerCount === 1 ? 'blocker' : 'blockers'} flagged
                 </span>
               </div>
@@ -450,91 +401,49 @@ export default function AsyncBoardClient({
           </div>
         </div>
 
-        {/* Late-submit prompt — shown when meeting has started but attendee hasn't submitted */}
         {!isOrganiser && !hasSubmitted && !showLateForm && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-center justify-between">
-            <p className="text-sm text-amber-800">
+          <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6 flex items-center justify-between">
+            <p className="text-sm text-amber-800 dark:text-amber-400">
               The meeting has started. You can still add your update.
             </p>
-            <button
-              onClick={() => setShowLateForm(true)}
-              className="ml-4 px-4 py-1.5 text-sm bg-amber-800 text-white rounded-lg hover:bg-amber-900 transition-colors flex-shrink-0"
-            >
+            <button onClick={() => setShowLateForm(true)}
+              className="ml-4 px-4 py-1.5 text-sm bg-amber-800 dark:bg-amber-700 text-white rounded-lg hover:bg-amber-900 dark:hover:bg-amber-600 transition-colors flex-shrink-0">
               Add my update →
             </button>
           </div>
         )}
 
-        {/* Inline late-submit form */}
         {!hasSubmitted && showLateForm && (
-          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 space-y-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm text-gray-500">Add your update</h2>
-              <button
-                onClick={() => setShowLateForm(false)}
-                className="text-xs text-gray-400 hover:text-gray-600"
-              >
+              <h2 className="text-sm text-gray-500 dark:text-gray-400">Add your update</h2>
+              <button onClick={() => setShowLateForm(false)} className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
                 Cancel
               </button>
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1.5">
-                What did you complete since last meeting?
-              </label>
-              <textarea
-                value={form.completed}
-                onChange={(e) => setForm({ ...form, completed: e.target.value })}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 resize-none"
-                placeholder="Completed tasks…"
-              />
+              <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1.5">What did you complete since last meeting?</label>
+              <textarea value={form.completed} onChange={(e) => setForm({ ...form, completed: e.target.value })} rows={2} className={textareaClass} placeholder="Completed tasks…" />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1.5">
-                What will you work on today?
-              </label>
-              <textarea
-                value={form.plan}
-                onChange={(e) => setForm({ ...form, plan: e.target.value })}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 resize-none"
-                placeholder="Today's goals…"
-              />
+              <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1.5">What will you work on today?</label>
+              <textarea value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })} rows={2} className={textareaClass} placeholder="Today's goals…" />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1.5">
-                Any blockers?{' '}
-                <span className="text-gray-400">(optional)</span>
-              </label>
-              <textarea
-                value={form.blockers}
-                onChange={(e) => setForm({ ...form, blockers: e.target.value })}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 resize-none"
-                placeholder="Anything blocking your progress…"
-              />
+              <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1.5">Any blockers? <span className="text-gray-400 dark:text-gray-500">(optional)</span></label>
+              <textarea value={form.blockers} onChange={(e) => setForm({ ...form, blockers: e.target.value })} rows={2} className={textareaClass} placeholder="Anything blocking your progress…" />
             </div>
             <div className="flex items-center gap-3">
               <div className="flex gap-2">
                 {STATUS_OPTIONS.map(({ value, label, selected }) => (
-                  <button
-                    key={value}
-                    onClick={() => setForm({ ...form, status_tag: value })}
-                    className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
-                      form.status_tag === value
-                        ? selected
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
+                  <button key={value} onClick={() => setForm({ ...form, status_tag: value })}
+                    className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${form.status_tag === value ? selected : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'}`}>
                     {label}
                   </button>
                 ))}
               </div>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || !form.completed.trim() || !form.plan.trim()}
-                className="ml-auto flex items-center gap-2 px-5 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition-colors disabled:opacity-50"
-              >
+              <button onClick={handleSubmit} disabled={submitting || !form.completed.trim() || !form.plan.trim()}
+                className="ml-auto flex items-center gap-2 px-5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 {submitting ? 'Submitting…' : 'Submit update'}
               </button>
@@ -542,66 +451,53 @@ export default function AsyncBoardClient({
           </div>
         )}
 
-        {/* My update */}
         {currentUserUpdate && (
-          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-            <h2 className="text-sm text-gray-500 mb-4">My update</h2>
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
+            <h2 className="text-sm text-gray-500 dark:text-gray-400 mb-4">My update</h2>
             <StatusUpdateCard update={currentUserUpdate} isCurrentUser />
           </div>
         )}
 
-        {/* Team updates + pending members */}
         {(otherUpdates.length > 0 || pendingAttendees.length > 0) && (
-          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-            <h2 className="text-sm text-gray-500 mb-4">Team updates</h2>
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
+            <h2 className="text-sm text-gray-500 dark:text-gray-400 mb-4">Team updates</h2>
             <div className="grid grid-cols-2 gap-4">
               {otherUpdates.map((update) => (
                 <StatusUpdateCard key={update.id} update={update} />
               ))}
               {pendingAttendees.map((attendee) => (
-                <PendingCard
-                  key={attendee.email}
-                  email={attendee.email}
-                  userId={attendee.userId}
-                  meetingId={meeting.id}
-                />
+                <PendingCard key={attendee.email} email={attendee.email} userId={attendee.userId} meetingId={meeting.id} />
               ))}
             </div>
           </div>
         )}
 
-        {/* AI Summary — Issues 5 */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <span>✨</span>
-              <h2 className="text-sm text-gray-500">AI summary</h2>
+              <h2 className="text-sm text-gray-500 dark:text-gray-400">AI summary</h2>
             </div>
             {summary && (
-              <button
-                onClick={generateSummary}
-                disabled={generatingSummary}
-                className="flex items-center gap-1.5 px-3 py-1 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
+              <button onClick={generateSummary} disabled={generatingSummary}
+                className="flex items-center gap-1.5 px-3 py-1 text-xs text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50">
                 <RefreshCw className={`w-3.5 h-3.5 ${generatingSummary ? 'animate-spin' : ''}`} />
                 Regenerate
               </button>
             )}
           </div>
           {generatingSummary ? (
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
               <Loader2 className="w-4 h-4 animate-spin" />
               Generating summary…
             </div>
           ) : summary ? (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 leading-relaxed">
+            <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
               {summary}
             </div>
           ) : (
-            <p className="text-sm text-gray-400 italic">
-              {submittedCount === 0
-                ? 'Summary will appear once someone submits.'
-                : 'Generating summary…'}
+            <p className="text-sm text-gray-400 dark:text-gray-500 italic">
+              {submittedCount === 0 ? 'Summary will appear once someone submits.' : 'Generating summary…'}
             </p>
           )}
         </div>
