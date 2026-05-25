@@ -7,7 +7,21 @@ import { slackClient } from '@/lib/slack'
 //   url_verification — Slack challenge handshake
 //   message (message.im) — relay organiser replies back to the original sender
 export async function POST(req: NextRequest) {
-  const body = await req.json()
+  const text = await req.text()
+
+  // Interactivity payloads (button clicks) are form-encoded — they belong at /api/slack/actions
+  if (text.startsWith('payload=')) {
+    console.warn('Received interactivity payload at /events — check Slack app Interactivity URL setting')
+    return NextResponse.json({ ok: true })
+  }
+
+  let body: Record<string, unknown>
+  try {
+    body = JSON.parse(text)
+  } catch {
+    console.error('Failed to parse Slack event body:', text.slice(0, 120))
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
 
   console.log('Slack event received:', JSON.stringify(body, null, 2))
 

@@ -1,8 +1,20 @@
 import { supabaseAdmin } from './supabase'
-import { sendDM, sendMeetingReminder, sendMorningDigest, sendAsyncNudge } from './slack'
+import { sendDM, sendMeetingReminder, sendMorningDigest, sendAsyncNudge, sendFocusSuggestion } from './slack'
 import { fetchUpcomingMeetings } from './google'
 import { classifyMeetings } from './classifier'
+import { findFocusGaps, gapsForBusiestDay } from './focus'
 import type { User } from '@/types/user'
+
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+
+function fmtIST(d: Date): string {
+  const ist = new Date(d.getTime() + IST_OFFSET_MS)
+  const h = ist.getUTCHours()
+  const m = ist.getUTCMinutes()
+  const ap = h >= 12 ? 'pm' : 'am'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return m === 0 ? `${h12}${ap}` : `${h12}:${String(m).padStart(2, '0')}${ap}`
+}
 
 // Sends the morning digest to all Slack-connected users.
 // Normal mode: only users whose digest_time (stored as IST HH:MM) matches current IST time.
@@ -116,6 +128,30 @@ export async function runDailyDigest(testMode = false): Promise<{ sent: number; 
       const firstName = localPart.charAt(0).toUpperCase() + localPart.slice(1)
 
       await sendMorningDigest(user.slack_user_id!, firstName, meetings ?? [])
+
+      // Send focus suggestion alongside the digest
+      try {
+        const allGaps = await findFocusGaps(user as User, { daysAhead: 5, minMeetings: 3, minGapMins: 60 })
+        const dayGaps = gapsForBusiestDay(allGaps)
+        if (dayGaps.length > 0) {
+          const first = dayGaps[0]
+          const [y, mo, d] = first.date.split('-').map(Number)
+          const dateLabel = new Date(Date.UTC(y, mo - 1, d) + IST_OFFSET_MS)
+            .toLocaleDateString('en-IN', {
+              weekday: 'long', day: 'numeric', month: 'long',
+              timeZone: 'Asia/Kolkata',
+            })
+          const formattedGaps = dayGaps.map(g => ({
+            startLabel: fmtIST(g.startTime),
+            endLabel: fmtIST(new Date(g.startTime.getTime() + g.durationMins * 60 * 1000)),
+            isoStart: g.startTime.toISOString(),
+          }))
+          await sendFocusSuggestion(user.slack_user_id!, user.id, dateLabel, first.meetingCount, formattedGaps)
+        }
+      } catch (focusErr) {
+        console.error(`Focus suggestion failed for ${user.email}:`, focusErr)
+      }
+
       await supabaseAdmin
         .from('users')
         .update({ last_digest_sent: istDate })

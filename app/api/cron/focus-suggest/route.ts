@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { findFocusGaps } from '@/lib/focus'
+import { findFocusGaps, gapsForBusiestDay } from '@/lib/focus'
 import { sendFocusSuggestion } from '@/lib/slack'
 import type { User } from '@/types/user'
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
 
-// Runs once daily (after the morning digest).
-// For each user with Google + Slack connected, finds the busiest upcoming day
-// with a free gap and sends a focus-block suggestion via Slack.
-//
+// Manual trigger endpoint — same logic as the focus suggestion in runDailyDigest.
 // ?test=true — lowers thresholds (1 meeting, 15 min gap, looks 14 days ahead)
-//              so you can test without needing a packed calendar
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -40,51 +36,51 @@ export async function GET(req: NextRequest) {
     console.log(`\nChecking focus gaps for ${user.email}`)
 
     try {
-      const gaps = await findFocusGaps(user, {
+      const allGaps = await findFocusGaps(user, {
         daysAhead:   testMode ? 14 : 5,
         minMeetings: testMode ? 1  : 3,
         minGapMins:  testMode ? 15 : 60,
       })
 
-      console.log(`  Gaps found: ${gaps.length}`, gaps.map(g => `${g.date} ${g.meetingCount} meetings ${g.durationMins}min gap`))
+      console.log(`  Gaps found: ${allGaps.length}`, allGaps.map(g => `${g.date} ${g.meetingCount} meetings ${g.durationMins}min gap`))
 
-      if (!gaps.length) {
+      const dayGaps = gapsForBusiestDay(allGaps)
+      if (!dayGaps.length) {
         console.log(`  No qualifying gaps found`)
         continue
       }
 
-      // Pick the day with the most meetings (most in need of a focus block)
-      const best = gaps.sort((a, b) => b.meetingCount - a.meetingCount)[0]
+      const fmt = (d: Date) => {
+        const ist = new Date(d.getTime() + IST_OFFSET_MS)
+        const h = ist.getUTCHours()
+        const m = ist.getUTCMinutes()
+        const ap = h >= 12 ? 'pm' : 'am'
+        const h12 = h % 12 === 0 ? 12 : h % 12
+        return m === 0 ? `${h12}${ap}` : `${h12}:${String(m).padStart(2, '0')}${ap}`
+      }
 
-      // Format display labels in IST
-      const startIST = new Date(best.startTime.getTime() + IST_OFFSET_MS)
-      const hour = startIST.getUTCHours()
-      const minute = startIST.getUTCMinutes()
-      const ampm = hour >= 12 ? 'pm' : 'am'
-      const h12 = hour % 12 === 0 ? 12 : hour % 12
-      const startLabel = minute === 0
-        ? `${h12}${ampm}`
-        : `${h12}:${String(minute).padStart(2, '0')}${ampm}`
-
-      const [y, mo, d] = best.date.split('-').map(Number)
+      const first = dayGaps[0]
+      const [y, mo, d] = first.date.split('-').map(Number)
       const dateLabel = new Date(Date.UTC(y, mo - 1, d) + IST_OFFSET_MS)
         .toLocaleDateString('en-IN', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
+          weekday: 'long', day: 'numeric', month: 'long',
           timeZone: 'Asia/Kolkata',
         })
 
-      console.log(`  Suggesting gap on ${best.date} at ${startLabel} (${best.durationMins} min, ${best.meetingCount} meetings)`)
+      const formattedGaps = dayGaps.map(g => ({
+        startLabel: fmt(g.startTime),
+        endLabel: fmt(new Date(g.startTime.getTime() + g.durationMins * 60 * 1000)),
+        isoStart: g.startTime.toISOString(),
+      }))
+
+      console.log(`  Suggesting ${dayGaps.length} gaps on ${first.date} (${first.meetingCount} meetings)`)
 
       await sendFocusSuggestion(
         user.slack_user_id!,
         user.id,
         dateLabel,
-        startLabel,
-        best.durationMins,
-        best.meetingCount,
-        best.startTime.toISOString(),
+        first.meetingCount,
+        formattedGaps,
       )
 
       sent++

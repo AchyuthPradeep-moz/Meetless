@@ -449,48 +449,64 @@ export async function sendCancellationSuggestion(
 export async function sendFocusSuggestion(
   slackUserId: string,
   userId: string,
-  date: string,         // e.g. "Wednesday, May 21"
-  startLabel: string,   // e.g. "10:00am"
-  durationMins: number,
+  dateLabel: string,    // e.g. "Wednesday, 26 May"
   meetingCount: number,
-  isoStart: string,     // ISO string of start time, used in action value
+  gaps: Array<{
+    startLabel: string  // e.g. "10am"
+    endLabel: string    // e.g. "12pm"
+    isoStart: string    // UTC ISO string, used in action value
+  }>,
 ): Promise<void> {
-  const durationLabel = durationMins >= 60
-    ? `${durationMins / 60}-hour`
-    : `${durationMins}-minute`
+  // Each gap button blocks exactly 60 minutes from that start time
+  const BLOCK_MINS = 60
 
-  const value = `${userId}__${isoStart}__${durationMins}`
+  // Build one button per gap; Slack allows max 5 elements per actions block
+  const gapButtons = gaps.map((g, i) => ({
+    type: 'button',
+    text: { type: 'plain_text', text: `🔕 ${g.startLabel}–${g.endLabel}`, emoji: true },
+    style: 'primary' as const,
+    action_id: `block_focus_${i}`,
+    value: `block_focus__${userId}__${g.isoStart}__${BLOCK_MINS}`,
+  }))
+
+  const dismissButton = {
+    type: 'button',
+    text: { type: 'plain_text', text: 'Not now', emoji: false },
+    action_id: 'dismiss_focus',
+    value: `dismiss_focus__${userId}`,
+  }
+
+  // Chunk gap buttons into groups of 5 (Slack actions block limit)
+  const chunks: typeof gapButtons[] = []
+  for (let i = 0; i < gapButtons.length; i += 5) {
+    chunks.push(gapButtons.slice(i, i + 5))
+  }
+  // Append dismiss to the last chunk (it fits since we have at most 5 gap buttons per chunk)
+  const lastChunk = chunks[chunks.length - 1]
+  if (lastChunk.length < 5) {
+    lastChunk.push(dismissButton as typeof gapButtons[0])
+  } else {
+    chunks.push([dismissButton as typeof gapButtons[0]])
+  }
+
+  const actionBlocks = chunks.map((chunk) => ({
+    type: 'actions',
+    elements: chunk,
+  }))
 
   try {
     await slackClient.chat.postMessage({
       channel: slackUserId,
-      text: `🎯 You have ${meetingCount} meetings on ${date}. Meetless found a ${durationLabel} gap at ${startLabel}.`,
+      text: `🎯 You have ${meetingCount} meetings on ${dateLabel}. Pick a free slot to block as focus time.`,
       blocks: [
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `🎯 You have *${meetingCount} meetings* on ${date}.\nMeetless found a *${durationLabel} gap* at *${startLabel}*.\nBlock it as focus time?`,
+            text: `🎯 You have *${meetingCount} meetings* on ${dateLabel}.\nPick a free slot to block as *1-hour focus time*:`,
           },
         },
-        {
-          type: 'actions',
-          elements: [
-            {
-              type: 'button',
-              text: { type: 'plain_text', text: '🔕 Block it', emoji: true },
-              style: 'primary',
-              action_id: 'block_focus',
-              value: `block_focus__${value}`,
-            },
-            {
-              type: 'button',
-              text: { type: 'plain_text', text: 'Not now', emoji: false },
-              action_id: 'dismiss_focus',
-              value: `dismiss_focus__${value}`,
-            },
-          ],
-        },
+        ...actionBlocks,
       ],
     })
   } catch (err) {

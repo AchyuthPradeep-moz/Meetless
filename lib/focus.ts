@@ -92,42 +92,37 @@ export async function findFocusGaps(
       .filter((s) => s.start < s.end && s.start < dayEnd && s.end > dayStart)
       .sort((a, b) => a.start.getTime() - b.start.getTime())
 
-    // Walk the timeline and collect free gaps
+    // Collect ALL qualifying free gaps for this day
     let cursor = dayStart
-    let bestGap: { start: Date; durationMins: number } | null = null
-
     for (const busy of sorted) {
       if (busy.start > cursor) {
         const gapMins = Math.floor((busy.start.getTime() - cursor.getTime()) / 60000)
         if (gapMins >= minGapMins) {
-          if (!bestGap || gapMins > bestGap.durationMins) {
-            bestGap = { start: cursor, durationMins: gapMins }
-          }
+          gaps.push({ date: dateStr, startTime: cursor, durationMins: gapMins, meetingCount })
         }
       }
       if (busy.end > cursor) cursor = busy.end
     }
-
-    // Check gap after last meeting until end of day
     if (cursor < dayEnd) {
       const gapMins = Math.floor((dayEnd.getTime() - cursor.getTime()) / 60000)
       if (gapMins >= minGapMins) {
-        if (!bestGap || gapMins > bestGap.durationMins) {
-          bestGap = { start: cursor, durationMins: gapMins }
-        }
+        gaps.push({ date: dateStr, startTime: cursor, durationMins: gapMins, meetingCount })
       }
-    }
-
-    if (bestGap) {
-      // Cap suggestion at 2 hours max
-      gaps.push({
-        date: dateStr,
-        startTime: bestGap.start,
-        durationMins: Math.min(bestGap.durationMins, 120),
-        meetingCount,
-      })
     }
   }
 
   return gaps
+}
+
+// Returns all gaps for the busiest qualifying day (most meetings).
+export function gapsForBusiestDay(gaps: FocusGap[]): FocusGap[] {
+  if (!gaps.length) return []
+  const byDate: Record<string, FocusGap[]> = {}
+  for (const g of gaps) {
+    if (!byDate[g.date]) byDate[g.date] = []
+    byDate[g.date].push(g)
+  }
+  const busiest = Object.entries(byDate)
+    .sort((a, b) => b[1][0].meetingCount - a[1][0].meetingCount)[0]
+  return busiest?.[1] ?? []
 }
