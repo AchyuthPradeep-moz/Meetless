@@ -498,7 +498,7 @@ export async function sendFocusSuggestion(
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `🎯 *Free slots on ${dateLabel}*\nBlock one as 1-hour focus time?`,
+            text: `🎯 *Free slots on ${dateLabel}*\nBlock one as focus time?`,
           },
         },
         ...actionBlocks,
