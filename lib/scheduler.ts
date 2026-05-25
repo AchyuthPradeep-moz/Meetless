@@ -143,6 +143,7 @@ export async function runDailyDigest(testMode = false): Promise<{ sent: number; 
             startLabel: fmtIST(g.startTime),
             endLabel: fmtIST(new Date(g.startTime.getTime() + g.durationMins * 60 * 1000)),
             isoStart: g.startTime.toISOString(),
+            durationMins: g.durationMins,
           }))
           await sendFocusSuggestion(user.slack_user_id!, user.id, dateLabel, formattedGaps)
         }

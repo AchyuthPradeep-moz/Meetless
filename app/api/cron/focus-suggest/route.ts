@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
         startLabel: fmt(g.startTime),
         endLabel: fmt(new Date(g.startTime.getTime() + g.durationMins * 60 * 1000)),
         isoStart: g.startTime.toISOString(),
+        durationMins: g.durationMins,
       }))
 
       console.log(`  Suggesting ${gaps.length} gap(s) on ${gaps[0].date}`)

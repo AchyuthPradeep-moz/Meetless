@@ -454,16 +454,15 @@ export async function sendFocusSuggestion(
     startLabel: string  // e.g. "10am"
     endLabel: string    // e.g. "12pm"
     isoStart: string    // UTC ISO string, used in action value
+    durationMins: number
   }>,
 ): Promise<void> {
-  const BLOCK_MINS = 60
-
   const gapButtons = gaps.map((g, i) => ({
     type: 'button',
     text: { type: 'plain_text', text: `🔕 ${g.startLabel}–${g.endLabel}`, emoji: true },
     style: 'primary' as const,
     action_id: `block_focus_${i}`,
-    value: `block_focus__${userId}__${g.isoStart}__${BLOCK_MINS}`,
+    value: `block_focus__${userId}__${g.isoStart}__${g.durationMins}`,
   }))
 
   const dismissButton = {

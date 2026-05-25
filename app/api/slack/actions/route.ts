@@ -162,23 +162,6 @@ async function processSlackAction(payload: any) {
 
       await createFocusBlock(user, startTime, durationMins)
 
-      // Set Slack status emoji for the duration of the focus block
-      if (user.slack_user_id) {
-        try {
-          await slackClient.users.profile.set({
-            user: user.slack_user_id,
-            profile: {
-              status_text: 'In focus mode',
-              status_emoji: ':no_bell:',
-              status_expiration: Math.floor(endTime.getTime() / 1000),
-            } as Record<string, unknown>,
-          })
-        } catch (statusErr) {
-          // Status emoji is best-effort — don't fail the whole action
-          console.error('Failed to set Slack status:', statusErr)
-        }
-      }
-
       // Format confirmation time in IST
       const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
       const startIST = new Date(startTime.getTime() + IST_OFFSET_MS)
