@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  const event = body.event
+  const event = body.event as Record<string, unknown> | undefined
   if (!event) {
     console.log('No event in payload')
     return NextResponse.json({ ok: true })
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     console.log('Checking for draft sent to:', event.user)
     // Fire-and-forget: return 200 immediately so Slack does not retry,
     // then complete the relay in the background
-    relayOrganiserReply(event.user, event.text ?? '').catch((err) =>
+    relayOrganiserReply(event.user as string, (event.text as string) ?? '').catch((err) =>
       console.error('Relay failed:', err)
     )
   } else {
