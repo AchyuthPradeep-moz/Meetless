@@ -444,23 +444,20 @@ export async function sendCancellationSuggestion(
   }
 }
 
-// Suggests blocking a free gap as focus time. User picks Block it or Not now.
-// value encodes: block_focus_<userId>_<isoStart>_<durationMins>
+// Suggests blocking free gaps as focus time. One button per gap, each blocks 60 min.
+// value encodes: block_focus__<userId>__<isoStart>__<durationMins>
 export async function sendFocusSuggestion(
   slackUserId: string,
   userId: string,
   dateLabel: string,    // e.g. "Wednesday, 26 May"
-  meetingCount: number,
   gaps: Array<{
     startLabel: string  // e.g. "10am"
     endLabel: string    // e.g. "12pm"
     isoStart: string    // UTC ISO string, used in action value
   }>,
 ): Promise<void> {
-  // Each gap button blocks exactly 60 minutes from that start time
   const BLOCK_MINS = 60
 
-  // Build one button per gap; Slack allows max 5 elements per actions block
   const gapButtons = gaps.map((g, i) => ({
     type: 'button',
     text: { type: 'plain_text', text: `🔕 ${g.startLabel}–${g.endLabel}`, emoji: true },
@@ -476,12 +473,11 @@ export async function sendFocusSuggestion(
     value: `dismiss_focus__${userId}`,
   }
 
-  // Chunk gap buttons into groups of 5 (Slack actions block limit)
+  // Chunk into groups of 5 (Slack actions block limit); append dismiss to last chunk
   const chunks: typeof gapButtons[] = []
   for (let i = 0; i < gapButtons.length; i += 5) {
     chunks.push(gapButtons.slice(i, i + 5))
   }
-  // Append dismiss to the last chunk (it fits since we have at most 5 gap buttons per chunk)
   const lastChunk = chunks[chunks.length - 1]
   if (lastChunk.length < 5) {
     lastChunk.push(dismissButton as typeof gapButtons[0])
@@ -497,13 +493,13 @@ export async function sendFocusSuggestion(
   try {
     await slackClient.chat.postMessage({
       channel: slackUserId,
-      text: `🎯 You have ${meetingCount} meetings on ${dateLabel}. Pick a free slot to block as focus time.`,
+      text: `🎯 Free slots on ${dateLabel} — block one as focus time?`,
       blocks: [
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `🎯 You have *${meetingCount} meetings* on ${dateLabel}.\nPick a free slot to block as *1-hour focus time*:`,
+            text: `🎯 *Free slots on ${dateLabel}*\nBlock one as 1-hour focus time?`,
           },
         },
         ...actionBlocks,
